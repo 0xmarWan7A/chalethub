@@ -33,6 +33,16 @@ MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 
+
+# تحديد بيئة التشغيل
+IS_VERCEL = os.environ.get('VERCEL', False)
+
+# في Vercel، استخدم المسار المؤقت لقاعدة البيانات
+if IS_VERCEL:
+    os.environ['DB_PATH'] = '/tmp/lasreina.db'
+else:
+    os.environ['DB_PATH'] = 'lasreina.db'
+
 # إنشاء مجلد الرفع والمجلدات الفرعية
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(os.path.join(UPLOAD_FOLDER, 'chalets'), exist_ok=True)
