@@ -17,6 +17,9 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
+# استيراد قاعدة البيانات
+import database as db
+
 # تحديد بيئة التشغيل
 IS_VERCEL = os.environ.get('VERCEL', False)
 
