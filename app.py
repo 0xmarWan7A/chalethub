@@ -8,15 +8,17 @@ import io
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, session, send_from_directory, jsonify, send_file
 from werkzeug.utils import secure_filename
-from werkzeug.security import check_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
-import database as db
 import bleach
 from dotenv import load_dotenv
 from PIL import Image
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
+
+# تحديد بيئة التشغيل
+IS_VERCEL = os.environ.get('VERCEL', False)
 
 load_dotenv()
 
@@ -26,60 +28,56 @@ app.permanent_session_lifetime = timedelta(days=7)
 
 # إعدادات رفع الملفات
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'uploads')
+
+if IS_VERCEL:
+    UPLOAD_FOLDER = '/tmp/uploads'
+else:
+    UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'uploads')
+
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'pdf'}
 MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 
-
-# تحديد بيئة التشغيل
-IS_VERCEL = os.environ.get('VERCEL', False)
-
-# في Vercel، استخدم المسار المؤقت لقاعدة البيانات
-if IS_VERCEL:
-    os.environ['DB_PATH'] = '/tmp/lasreina.db'
+# إنشاء مجلدات الرفع
+if not IS_VERCEL:
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    os.makedirs(os.path.join(UPLOAD_FOLDER, 'chalets'), exist_ok=True)
+    os.makedirs(os.path.join(UPLOAD_FOLDER, 'categories'), exist_ok=True)
+    os.makedirs(os.path.join(UPLOAD_FOLDER, 'national_id'), exist_ok=True)
+    os.makedirs(os.path.join(UPLOAD_FOLDER, 'chalet_cards'), exist_ok=True)
 else:
-    os.environ['DB_PATH'] = 'lasreina.db'
-
-# إنشاء مجلد الرفع والمجلدات الفرعية
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(os.path.join(UPLOAD_FOLDER, 'chalets'), exist_ok=True)
-os.makedirs(os.path.join(UPLOAD_FOLDER, 'categories'), exist_ok=True)
-os.makedirs(os.path.join(UPLOAD_FOLDER, 'national_id'), exist_ok=True)
-os.makedirs(os.path.join(UPLOAD_FOLDER, 'chalet_cards'), exist_ok=True)
+    os.makedirs('/tmp/uploads', exist_ok=True)
+    os.makedirs('/tmp/uploads/chalets', exist_ok=True)
+    os.makedirs('/tmp/uploads/categories', exist_ok=True)
+    os.makedirs('/tmp/uploads/national_id', exist_ok=True)
+    os.makedirs('/tmp/uploads/chalet_cards', exist_ok=True)
 
 # --- دوال الأمان ---
 def sanitize_html(text):
-    """تنظيف النص من أكواد HTML الضارة"""
     if text:
         return bleach.clean(text, tags=[], strip=True)
     return text
 
 def allowed_file(filename):
-    """التحقق من امتداد الملف المسموح"""
     if not filename:
         return False
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def get_file_size(file):
-    """الحصول على حجم الملف"""
     file.seek(0, os.SEEK_END)
     size = file.tell()
     file.seek(0)
     return size
 
 def compress_image(file_path, max_size=(1200, 800), quality=85):
-    """ضغط الصورة لتقليل حجمها"""
     try:
         img = Image.open(file_path)
-        
         if img.mode in ('RGBA', 'LA'):
             background = Image.new('RGB', img.size, (255, 255, 255))
             background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
             img = background
-        
         img.thumbnail(max_size, Image.Resampling.LANCZOS)
         img.save(file_path, optimize=True, quality=quality)
         return True
@@ -88,7 +86,6 @@ def compress_image(file_path, max_size=(1200, 800), quality=85):
         return False
 
 def save_uploaded_file(file, subfolder=''):
-    """حفظ الملف المرفوع مع تحسين الصور"""
     if not file or not file.filename or not allowed_file(file.filename):
         return None
     
@@ -109,9 +106,8 @@ def save_uploaded_file(file, subfolder=''):
         file_path = os.path.join(upload_path, filename)
         file.save(file_path)
         
-        if ext in ['jpg', 'jpeg', 'png', 'gif', 'webp']:
-            if file_size > 1 * 1024 * 1024:
-                compress_image(file_path)
+        if ext in ['jpg', 'jpeg', 'png', 'gif', 'webp'] and file_size > 1 * 1024 * 1024:
+            compress_image(file_path)
         
         if subfolder:
             return f"uploads/{subfolder}/{filename}"
@@ -122,14 +118,11 @@ def save_uploaded_file(file, subfolder=''):
         return None
 
 def delete_uploaded_file(filepath):
-    """حذف ملف مرفوع"""
     if not filepath:
         return False
-    
     try:
         if filepath.startswith('uploads/'):
             filepath = filepath.replace('uploads/', '')
-        
         upload_path = app.config['UPLOAD_FOLDER']
         full_path = os.path.join(upload_path, filepath)
         if os.path.exists(full_path):
@@ -141,35 +134,27 @@ def delete_uploaded_file(filepath):
         return False
 
 def get_image_url(image_filename):
-    """الحصول على رابط الصورة الصحيح"""
     if not image_filename:
         return url_for('static', filename='img/default_avatar.jpg')
-    
     if image_filename.startswith('uploads/'):
         return url_for('static', filename=image_filename)
-    
     if '/' in image_filename:
         return url_for('static', filename='uploads/' + image_filename)
-    
     if image_filename.startswith('C') or image_filename.startswith('default'):
         return url_for('static', filename='img/' + image_filename)
-    
-    full_path = os.path.join(app.config['UPLOAD_FOLDER'], image_filename)
-    if os.path.exists(full_path):
-        return url_for('static', filename='uploads/' + image_filename)
-    
     return url_for('static', filename='img/default_avatar.jpg')
 
 @app.context_processor
 def utility_processor():
-    """إضافة دوال مساعدة إلى جميع القوالب"""
     def get_image_url_dynamic(image_filename):
         return get_image_url(image_filename)
     return dict(get_image_url_dynamic=get_image_url_dynamic)
 
+# --- استيراد قاعدة البيانات ---
+import database as db
+
 # --- دوال المصادقة ---
 def login_required(role=None):
-    """مصادقة تسجيل الدخول"""
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
@@ -189,46 +174,36 @@ def login_required(role=None):
 
 @app.route('/')
 def index():
-    """الصفحة الرئيسية"""
     chalets = db.get_all_chalets()[:6]
     categories = db.get_categories()
-    return render_template('index.html', 
-                         chalets=chalets, 
-                         categories=categories,
-                         hero_image='C0.jpg')
+    return render_template('index.html', chalets=chalets, categories=categories, hero_image='C0.jpg')
 
 @app.route('/about')
 def about():
-    """صفحة عن القرية"""
     categories = db.get_categories()
     return render_template('about.html', categories=categories)
 
 @app.route('/contact')
 def contact():
-    """صفحة الاتصال"""
     return render_template('contact.html')
 
 @app.route('/categories')
 def categories():
-    """صفحة التصنيفات"""
     categories = db.get_categories()
     return render_template('categories.html', categories=categories)
 
 @app.route('/category/<int:category_id>')
 def category_chalets(category_id):
-    """شاليهات التصنيف"""
     category = db.get_category_by_id(category_id)
     if not category:
         flash('التصنيف غير موجود', 'danger')
         return redirect(url_for('categories'))
-    
     all_chalets = db.get_all_chalets()
     chalets = [c for c in all_chalets if c.get('category_id') == category_id]
     return render_template('category_chalets.html', category=category, chalets=chalets)
 
 @app.route('/all-chalets')
 def all_chalets():
-    """جميع الشاليهات مع الفلتر"""
     min_price = request.args.get('min_price', type=int)
     max_price = request.args.get('max_price', type=int)
     bedrooms = request.args.get('bedrooms', type=int)
@@ -236,7 +211,6 @@ def all_chalets():
     category_id = request.args.get('category_id', type=int)
     
     all_chalets = db.get_all_chalets()
-    
     filtered_chalets = []
     for chalet in all_chalets:
         price = chalet['price_per_night']
@@ -253,42 +227,26 @@ def all_chalets():
         filtered_chalets.append(chalet)
     
     categories = db.get_categories()
-    return render_template('all_chalets.html', 
-                         chalets=filtered_chalets, 
-                         categories=categories)
+    return render_template('all_chalets.html', chalets=filtered_chalets, categories=categories)
 
 @app.route('/chalet/<int:chalet_id>')
 def chalet_detail(chalet_id):
-    """تفاصيل الشاليه"""
     chalet = db.get_chalet_by_id(chalet_id)
     if not chalet:
         flash('الشاليه غير موجود', 'danger')
         return redirect(url_for('all_chalets'))
-    
-    booked_dates = db.get_booked_dates(chalet_id)
-    return render_template('chalet_detail.html', 
-                         chalet=chalet, 
-                         booked_dates=booked_dates)
+    booked_dates = db.get_all_booked_dates(chalet_id)
+    return render_template('chalet_detail.html', chalet=chalet, booked_dates=booked_dates)
 
 @app.route('/get-booked-dates/<int:chalet_id>')
 def get_booked_dates(chalet_id):
-    """API للحصول على التواريخ المحجوزة (تشمل تواريخ المالك)"""
     dates = db.get_all_booked_dates(chalet_id)
     return jsonify({'dates': dates})
-
-@app.route('/api/pending-count')
-@login_required(role='owner')
-def api_pending_count():
-    """API للحصول على عدد الحجوزات المعلقة للمالك"""
-    user_id = session['user_id']
-    pending = db.get_pending_bookings_by_owner(user_id)
-    return jsonify({'count': len(pending)})
 
 # --- صفحات المصادقة ---
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
-    """صفحة التسجيل"""
     if request.method == 'POST':
         try:
             username = sanitize_html(request.form.get('username', '').strip())
@@ -370,7 +328,6 @@ def signup():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    """صفحة تسجيل الدخول"""
     session.clear()
     
     if request.method == 'POST':
@@ -405,7 +362,6 @@ def login():
 
 @app.route('/logout')
 def logout():
-    """تسجيل الخروج"""
     session.clear()
     flash('تم تسجيل الخروج بنجاح', 'info')
     return redirect(url_for('index'))
@@ -415,7 +371,6 @@ def logout():
 @app.route('/dashboard')
 @login_required()
 def dashboard():
-    """لوحة التحكم الرئيسية"""
     user = db.get_user_by_id(session['user_id'])
     if not user:
         session.clear()
@@ -436,18 +391,15 @@ def dashboard():
                                bookings=bookings,
                                user=user,
                                pending_count=pending_count)
-    else:  # customer
+    else:
         bookings = db.get_bookings_by_customer(user_id)
-        return render_template('customer_dashboard.html', 
-                               bookings=bookings,
-                               user=user)
+        return render_template('customer_dashboard.html', bookings=bookings, user=user)
 
 # --- صفحات المالك ---
 
 @app.route('/owner/add-chalet', methods=['GET', 'POST'])
 @login_required(role='owner')
 def owner_add_chalet():
-    """إضافة شاليه جديد من قبل المالك"""
     if request.method == 'POST':
         try:
             name_ar = sanitize_html(request.form.get('name_ar', '').strip())
@@ -496,7 +448,6 @@ def owner_add_chalet():
 @app.route('/owner/chalet/<int:chalet_id>/images', methods=['GET', 'POST'])
 @login_required(role='owner')
 def owner_chalet_images(chalet_id):
-    """إدارة صور الشاليه"""
     chalet = db.get_chalet_by_id(chalet_id)
     if not chalet:
         flash('الشاليه غير موجود', 'danger')
@@ -513,13 +464,6 @@ def owner_chalet_images(chalet_id):
                 image_path = save_uploaded_file(file, 'chalets')
                 if image_path:
                     is_main = request.form.get('is_main') == 'on'
-                    
-                    if is_main:
-                        conn = db.get_db_connection()
-                        conn.execute('UPDATE chalet_images SET is_main = 0 WHERE chalet_id = ?', (chalet_id,))
-                        conn.commit()
-                        conn.close()
-                    
                     db.add_chalet_image(chalet_id, image_path, is_main)
                     flash('تم إضافة الصورة بنجاح', 'success')
                 else:
@@ -535,7 +479,6 @@ def owner_chalet_images(chalet_id):
 @app.route('/owner/image/delete/<int:image_id>')
 @login_required(role='owner')
 def owner_delete_image(image_id):
-    """حذف صورة شاليه"""
     conn = db.get_db_connection()
     image = conn.execute('''
         SELECT ci.*, c.owner_id 
@@ -545,24 +488,18 @@ def owner_delete_image(image_id):
     ''', (image_id,)).fetchone()
     conn.close()
     
-    if not image:
-        flash('الصورة غير موجودة', 'danger')
-        return redirect(url_for('owner_dashboard'))
-    
-    if image['owner_id'] != session['user_id']:
+    if not image or image['owner_id'] != session['user_id']:
         flash('ليس لديك صلاحية لحذف هذه الصورة', 'danger')
         return redirect(url_for('owner_dashboard'))
     
     delete_uploaded_file(image['image'])
     db.delete_chalet_image(image_id)
-    
     flash('تم حذف الصورة بنجاح', 'success')
     return redirect(url_for('owner_chalet_images', chalet_id=image['chalet_id']))
 
 @app.route('/owner/image/main/<int:image_id>')
 @login_required(role='owner')
 def owner_set_main_image(image_id):
-    """تعيين صورة رئيسية"""
     conn = db.get_db_connection()
     image = conn.execute('''
         SELECT ci.*, c.owner_id 
@@ -572,11 +509,7 @@ def owner_set_main_image(image_id):
     ''', (image_id,)).fetchone()
     conn.close()
     
-    if not image:
-        flash('الصورة غير موجودة', 'danger')
-        return redirect(url_for('owner_dashboard'))
-    
-    if image['owner_id'] != session['user_id']:
+    if not image or image['owner_id'] != session['user_id']:
         flash('ليس لديك صلاحية لتعديل هذه الصورة', 'danger')
         return redirect(url_for('owner_dashboard'))
     
@@ -587,98 +520,33 @@ def owner_set_main_image(image_id):
 @app.route('/owner/chalet/<int:chalet_id>/dates', methods=['GET', 'POST'])
 @login_required(role='owner')
 def owner_chalet_dates(chalet_id):
-    """إدارة التواريخ المحجوزة للشاليه"""
     chalet = db.get_chalet_by_id(chalet_id)
-    if not chalet:
-        flash('الشاليه غير موجود', 'danger')
-        return redirect(url_for('owner_dashboard'))
-    
-    if chalet['owner_id'] != session['user_id']:
+    if not chalet or chalet['owner_id'] != session['user_id']:
         flash('ليس لديك صلاحية لتعديل هذا الشاليه', 'danger')
         return redirect(url_for('owner_dashboard'))
     
     if request.method == 'POST':
         action = request.form.get('action')
+        date = request.form.get('date')
         reason = request.form.get('reason', '')
         
-        if action == 'add_single':
-            # إضافة تاريخ واحد
-            date = request.form.get('date')
-            if not date:
-                flash('الرجاء اختيار تاريخ', 'danger')
-                return redirect(url_for('owner_chalet_dates', chalet_id=chalet_id))
-            
+        if not date:
+            flash('الرجاء اختيار تاريخ', 'danger')
+            return redirect(url_for('owner_chalet_dates', chalet_id=chalet_id))
+        
+        if action == 'add':
             if db.add_owner_booked_date(chalet_id, date, reason):
                 flash('تم إضافة التاريخ المحجوز بنجاح', 'success')
             else:
                 flash('هذا التاريخ محجوز بالفعل', 'warning')
-                
-        elif action == 'add_range':
-            # إضافة مجموعة تواريخ
-            start_date = request.form.get('start_date')
-            end_date = request.form.get('end_date')
-            include_weekends = request.form.get('include_weekends') == 'on'
-            
-            if not start_date or not end_date:
-                flash('الرجاء اختيار تاريخ البداية والنهاية', 'danger')
-                return redirect(url_for('owner_chalet_dates', chalet_id=chalet_id))
-            
-            if start_date > end_date:
-                flash('تاريخ البداية يجب أن يكون قبل تاريخ النهاية', 'danger')
-                return redirect(url_for('owner_chalet_dates', chalet_id=chalet_id))
-            
-            # تحويل التواريخ إلى كائنات datetime
-            start = datetime.strptime(start_date, '%Y-%m-%d')
-            end = datetime.strptime(end_date, '%Y-%m-%d')
-            
-            added_count = 0
-            skipped_count = 0
-            current = start
-            
-            while current <= end:
-                # التحقق من يوم الأسبوع (5=الجمعة, 6=السبت)
-                if not include_weekends and current.weekday() >= 5:
-                    current += timedelta(days=1)
-                    continue
-                
-                date_str = current.strftime('%Y-%m-%d')
-                if db.add_owner_booked_date(chalet_id, date_str, reason):
-                    added_count += 1
-                else:
-                    skipped_count += 1
-                
-                current += timedelta(days=1)
-            
-            if added_count > 0:
-                flash(f'تم إضافة {added_count} تاريخ محجوز بنجاح' + (f' (تم تخطي {skipped_count} تاريخ محجوز مسبقاً)' if skipped_count > 0 else ''), 'success')
-            else:
-                flash('لم يتم إضافة أي تواريخ جديدة (جميع التواريخ محجوزة مسبقاً)', 'warning')
-                
-        elif action == 'remove_single':
-            # حذف تاريخ واحد
-            date = request.form.get('date')
-            if not date:
-                flash('الرجاء اختيار تاريخ', 'danger')
-                return redirect(url_for('owner_chalet_dates', chalet_id=chalet_id))
-            
+        elif action == 'remove':
             db.delete_owner_booked_date(chalet_id, date)
             flash('تم إزالة التاريخ المحجوز', 'success')
         
         return redirect(url_for('owner_chalet_dates', chalet_id=chalet_id))
     
     booked_dates = db.get_owner_booked_dates(chalet_id)
-    
-    # الحصول على التواريخ المحجوزة من الحجوزات المؤكدة
-    conn = db.get_db_connection()
-    booking_dates = conn.execute('''
-        SELECT DISTINCT bd.date 
-        FROM booked_dates bd
-        JOIN bookings b ON bd.booking_id = b.id
-        WHERE bd.chalet_id = ? AND b.status = 'confirmed'
-        ORDER BY bd.date
-    ''', (chalet_id,)).fetchall()
-    conn.close()
-    booking_dates = [dict(d) for d in booking_dates]
+    booking_dates = db.get_booking_dates_for_chalet(chalet_id)
     
     return render_template('owner_chalet_dates.html', 
                          chalet=chalet, 
@@ -688,7 +556,6 @@ def owner_chalet_dates(chalet_id):
 @app.route('/owner/bookings')
 @login_required(role='owner')
 def owner_bookings():
-    """صفحة إدارة الحجوزات للمالك مع التصفية"""
     user_id = session['user_id']
     filter_type = request.args.get('filter', 'all')
     
@@ -703,6 +570,8 @@ def owner_bookings():
         all_bookings = [b for b in all_bookings if b['status'] == 'completed']
     elif filter_type == 'cancelled':
         all_bookings = [b for b in all_bookings if b['status'] == 'cancelled']
+    elif filter_type == 'rejected':
+        all_bookings = [b for b in all_bookings if b['status'] == 'rejected']
     
     return render_template('owner_bookings.html', 
                          pending_bookings=pending_bookings,
@@ -712,7 +581,6 @@ def owner_bookings():
 @app.route('/owner/booking/approve/<int:booking_id>')
 @login_required(role='owner')
 def owner_approve_booking(booking_id):
-    """الموافقة على حجز من قبل المالك"""
     if db.update_booking_status_by_owner(booking_id, 'confirmed', session['user_id']):
         flash('تمت الموافقة على الحجز بنجاح', 'success')
     else:
@@ -722,7 +590,6 @@ def owner_approve_booking(booking_id):
 @app.route('/owner/booking/reject/<int:booking_id>')
 @login_required(role='owner')
 def owner_reject_booking(booking_id):
-    """رفض حجز من قبل المالك"""
     if db.update_booking_status_by_owner(booking_id, 'rejected', session['user_id']):
         flash('تم رفض الحجز', 'warning')
     else:
@@ -732,7 +599,6 @@ def owner_reject_booking(booking_id):
 @app.route('/owner/booking/cancel/<int:booking_id>')
 @login_required(role='owner')
 def owner_cancel_booking(booking_id):
-    """إلغاء حجز مؤكد من قبل المالك"""
     if db.update_booking_status_by_owner(booking_id, 'cancelled', session['user_id']):
         flash('تم إلغاء الحجز وإزالة التواريخ المحجوزة', 'success')
     else:
@@ -742,7 +608,6 @@ def owner_cancel_booking(booking_id):
 @app.route('/owner/bookings/export')
 @login_required(role='owner')
 def owner_export_bookings():
-    """تصدير حجوزات المالك إلى ملف Excel"""
     user_id = session['user_id']
     bookings = db.get_bookings_by_owner_all(user_id)
     
@@ -750,11 +615,8 @@ def owner_export_bookings():
     ws = wb.active
     ws.title = "حجوزاتي"
     
-    headers = [
-        'رقم الحجز', 'الشاليه', 'اسم العميل', 'رقم الهاتف', 'الرقم القومي',
-        'تاريخ البداية', 'تاريخ النهاية', 'عدد الأيام', 'المبلغ (ج.م)',
-        'الحالة', 'تاريخ الحجز'
-    ]
+    headers = ['رقم الحجز', 'الشاليه', 'اسم العميل', 'رقم الهاتف', 'الرقم القومي',
+               'تاريخ البداية', 'تاريخ النهاية', 'عدد الأيام', 'المبلغ (ج.م)', 'الحالة', 'تاريخ الحجز']
     
     header_font = Font(bold=True, color="FFFFFF")
     header_fill = PatternFill(start_color="1a3c5e", end_color="1a3c5e", fill_type="solid")
@@ -767,14 +629,7 @@ def owner_export_bookings():
         cell.alignment = header_alignment
     
     for row_idx, booking in enumerate(bookings, 2):
-        status_map = {
-            'pending': 'قيد الانتظار',
-            'confirmed': 'مؤكد',
-            'cancelled': 'ملغي',
-            'completed': 'مكتمل',
-            'rejected': 'مرفوض'
-        }
-        
+        status_map = {'pending': 'قيد الانتظار', 'confirmed': 'مؤكد', 'cancelled': 'ملغي', 'completed': 'مكتمل', 'rejected': 'مرفوض'}
         ws.cell(row=row_idx, column=1, value=booking['id'])
         ws.cell(row=row_idx, column=2, value=booking['chalet_name_ar'])
         ws.cell(row=row_idx, column=3, value=booking['customer_name'])
@@ -788,65 +643,39 @@ def owner_export_bookings():
         ws.cell(row=row_idx, column=11, value=booking['created_at'])
     
     for col in range(1, len(headers) + 1):
-        column_letter = get_column_letter(col)
-        ws.column_dimensions[column_letter].width = 18
-        
-        for row in range(1, len(bookings) + 2):
-            cell = ws.cell(row=row, column=col)
-            if row > 1:
-                cell.alignment = Alignment(horizontal="center", vertical="center")
-    
-    thin_border = Border(
-        left=Side(style='thin'),
-        right=Side(style='thin'),
-        top=Side(style='thin'),
-        bottom=Side(style='thin')
-    )
-    
-    for row in range(1, len(bookings) + 2):
-        for col in range(1, len(headers) + 1):
-            ws.cell(row=row, column=col).border = thin_border
+        ws.column_dimensions[get_column_letter(col)].width = 18
     
     output = io.BytesIO()
     wb.save(output)
     output.seek(0)
     
-    return send_file(
-        output,
-        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        as_attachment=True,
-        download_name=f'حجوزاتي_{datetime.now().strftime("%Y-%m-%d")}.xlsx'
-    )
+    return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                     as_attachment=True, download_name=f'حجوزاتي_{datetime.now().strftime("%Y-%m-%d")}.xlsx')
 
-# --- مسارات المدير ---
+# --- مسارات المدير (مختصرة) ---
 
 @app.route('/admin/dashboard')
 @login_required(role='admin')
 def admin_dashboard():
-    """لوحة تحكم المدير"""
     stats = db.get_statistics()
     bookings = db.get_bookings()
     pending_users = db.get_pending_users()
     pending_chalets = db.get_pending_chalets()
     categories = db.get_categories()
     return render_template('admin_dashboard.html', 
-                           stats=stats, 
-                           bookings=bookings,
-                           pending_users=pending_users,
-                           pending_chalets=pending_chalets,
-                           categories=categories)
+                         stats=stats, bookings=bookings,
+                         pending_users=pending_users, pending_chalets=pending_chalets,
+                         categories=categories)
 
 @app.route('/admin/chalets')
 @login_required(role='admin')
 def admin_chalets():
-    """إدارة الشاليهات"""
     pending_chalets = db.get_pending_chalets()
     return render_template('admin_chalets.html', pending_chalets=pending_chalets)
 
 @app.route('/admin/chalet/approve/<int:chalet_id>')
 @login_required(role='admin')
 def admin_approve_chalet(chalet_id):
-    """الموافقة على شاليه"""
     db.approve_chalet(chalet_id, session['user_id'])
     flash('تمت الموافقة على الشاليه بنجاح', 'success')
     return redirect(url_for('admin_chalets'))
@@ -854,7 +683,6 @@ def admin_approve_chalet(chalet_id):
 @app.route('/admin/chalet/reject/<int:chalet_id>')
 @login_required(role='admin')
 def admin_reject_chalet(chalet_id):
-    """رفض شاليه"""
     db.reject_chalet(chalet_id)
     flash('تم رفض الشاليه', 'warning')
     return redirect(url_for('admin_chalets'))
@@ -862,7 +690,6 @@ def admin_reject_chalet(chalet_id):
 @app.route('/admin/chalet/delete/<int:chalet_id>')
 @login_required(role='admin')
 def admin_delete_chalet(chalet_id):
-    """حذف شاليه"""
     db.delete_chalet(chalet_id)
     flash('تم حذف الشاليه', 'success')
     return redirect(url_for('admin_chalets'))
@@ -870,7 +697,6 @@ def admin_delete_chalet(chalet_id):
 @app.route('/admin/users')
 @login_required(role='admin')
 def admin_users():
-    """إدارة المستخدمين مع التصفية"""
     filter_type = request.args.get('filter', 'all')
     users = db.get_all_users()
     stats = db.get_user_statistics()
@@ -887,148 +713,56 @@ def admin_users():
 @app.route('/admin/user/<int:user_id>')
 @login_required(role='admin')
 def admin_user_detail(user_id):
-    """عرض تفاصيل مستخدم"""
     user = db.get_user_by_id(user_id)
     if not user:
         flash('المستخدم غير موجود', 'danger')
         return redirect(url_for('admin_users'))
-    
-    chalets_count = 0
-    if user['role'] == 'owner':
-        chalets = db.get_chalets_by_owner(user_id)
-        chalets_count = len(chalets)
-    
+    chalets_count = len(db.get_chalets_by_owner(user_id)) if user['role'] == 'owner' else 0
     return render_template('admin_user_detail.html', user=user, chalets_count=chalets_count)
 
-@app.route('/admin/user/edit/<int:user_id>', methods=['GET', 'POST'])
+@app.route('/admin/users/export')
 @login_required(role='admin')
-def admin_user_edit(user_id):
-    """تعديل بيانات المستخدم"""
-    user = db.get_user_by_id(user_id)
-    if not user:
-        flash('المستخدم غير موجود', 'danger')
-        return redirect(url_for('admin_users'))
+def admin_export_users():
+    users = db.get_all_users()
     
-    if user['role'] == 'admin' and user['id'] != session['user_id']:
-        flash('لا يمكن تعديل بيانات مدير آخر', 'danger')
-        return redirect(url_for('admin_users'))
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "المستخدمين"
     
-    if request.method == 'POST':
-        try:
-            name = sanitize_html(request.form.get('name', '').strip())
-            email = sanitize_html(request.form.get('email', '').strip())
-            phone = sanitize_html(request.form.get('phone', '').strip())
-            national_id = sanitize_html(request.form.get('national_id', '').strip())
-            
-            if not name:
-                flash('الاسم مطلوب', 'danger')
-                return render_template('admin_user_edit.html', user=user)
-            
-            data = {
-                'name': name,
-                'email': email,
-                'phone': phone,
-                'national_id': national_id
-            }
-            
-            db.update_user(user_id, data)
-            flash('تم تحديث بيانات المستخدم بنجاح', 'success')
-            return redirect(url_for('admin_users'))
-        except Exception as e:
-            flash(f'حدث خطأ: {str(e)}', 'danger')
-            return render_template('admin_user_edit.html', user=user)
+    headers = ['#', 'الاسم', 'اسم المستخدم', 'الدور', 'الهاتف', 'الرقم القومي', 'الحالة', 'تاريخ التسجيل']
     
-    return render_template('admin_user_edit.html', user=user)
-
-@app.route('/admin/user/upgrade/<int:user_id>', methods=['GET', 'POST'])
-@login_required(role='admin')
-def admin_user_upgrade(user_id):
-    """ترقية/تنزيل صلاحيات المستخدم"""
-    user = db.get_user_by_id(user_id)
-    if not user:
-        flash('المستخدم غير موجود', 'danger')
-        return redirect(url_for('admin_users'))
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="1a3c5e", end_color="1a3c5e", fill_type="solid")
     
-    if user['role'] == 'admin' and user['id'] != session['user_id']:
-        flash('لا يمكن تغيير دور مدير آخر', 'danger')
-        return redirect(url_for('admin_users'))
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal="center", vertical="center")
     
-    if request.method == 'POST':
-        new_role = request.form.get('new_role')
-        
-        if new_role not in ['customer', 'owner', 'admin']:
-            flash('دور غير صحيح', 'danger')
-            return redirect(url_for('admin_users'))
-        
-        if user['role'] == 'admin' and new_role != 'admin':
-            stats = db.get_user_statistics()
-            if stats['admins'] <= 1:
-                flash('لا يمكن تنزيل المدير الأخير', 'danger')
-                return redirect(url_for('admin_users'))
-        
-        if db.update_user_role(user_id, new_role):
-            flash(f'تم تحديث دور المستخدم إلى {new_role} بنجاح', 'success')
-        else:
-            flash('حدث خطأ في تحديث الدور', 'danger')
-        
-        return redirect(url_for('admin_users'))
+    for row_idx, user in enumerate(users, 2):
+        ws.cell(row=row_idx, column=1, value=user['id'])
+        ws.cell(row=row_idx, column=2, value=user['name'])
+        ws.cell(row=row_idx, column=3, value=user['username'])
+        ws.cell(row=row_idx, column=4, value=user['role'])
+        ws.cell(row=row_idx, column=5, value=user['phone'])
+        ws.cell(row=row_idx, column=6, value=user.get('national_id', ''))
+        ws.cell(row=row_idx, column=7, value=user['status'])
+        ws.cell(row=row_idx, column=8, value=user['created_at'])
     
-    return render_template('admin_user_upgrade.html', user=user)
-
-@app.route('/admin/user/delete/<int:user_id>')
-@login_required(role='admin')
-def admin_user_delete(user_id):
-    """حذف مستخدم"""
-    if user_id == session['user_id']:
-        flash('لا يمكن حذف حسابك الخاص', 'danger')
-        return redirect(url_for('admin_users'))
+    for col in range(1, len(headers) + 1):
+        ws.column_dimensions[get_column_letter(col)].width = 18
     
-    user = db.get_user_by_id(user_id)
-    if not user:
-        flash('المستخدم غير موجود', 'danger')
-        return redirect(url_for('admin_users'))
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
     
-    if user['role'] == 'admin':
-        flash('لا يمكن حذف مدير', 'danger')
-        return redirect(url_for('admin_users'))
-    
-    if db.delete_user(user_id):
-        flash(f'تم حذف المستخدم {user["name"]} بنجاح', 'success')
-    else:
-        flash('حدث خطأ في حذف المستخدم', 'danger')
-    
-    return redirect(url_for('admin_users'))
-
-@app.route('/admin/user/approve/<int:user_id>')
-@login_required(role='admin')
-def admin_approve_user(user_id):
-    """الموافقة على مستخدم"""
-    user = db.get_user_by_id(user_id)
-    if not user:
-        flash('المستخدم غير موجود', 'danger')
-        return redirect(url_for('admin_users'))
-    
-    db.approve_user(user_id, session['user_id'])
-    flash(f'تمت الموافقة على المستخدم {user["name"]}', 'success')
-    return redirect(url_for('admin_users'))
-
-@app.route('/admin/user/reject/<int:user_id>')
-@login_required(role='admin')
-def admin_reject_user(user_id):
-    """رفض مستخدم"""
-    user = db.get_user_by_id(user_id)
-    if not user:
-        flash('المستخدم غير موجود', 'danger')
-        return redirect(url_for('admin_users'))
-    
-    db.reject_user(user_id)
-    flash(f'تم رفض المستخدم {user["name"]}', 'warning')
-    return redirect(url_for('admin_users'))
+    return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                     as_attachment=True, download_name=f'المستخدمين_{datetime.now().strftime("%Y-%m-%d")}.xlsx')
 
 @app.route('/admin/bookings')
 @login_required(role='admin')
 def admin_bookings():
-    """إدارة الحجوزات مع التصفية"""
     filter_type = request.args.get('filter', 'all')
     bookings = db.get_bookings()
     
@@ -1040,44 +774,35 @@ def admin_bookings():
         bookings = [b for b in bookings if b['status'] == 'completed']
     elif filter_type == 'cancelled':
         bookings = [b for b in bookings if b['status'] == 'cancelled']
+    elif filter_type == 'rejected':
+        bookings = [b for b in bookings if b['status'] == 'rejected']
     
     return render_template('admin_bookings.html', bookings=bookings, filter_type=filter_type)
 
 @app.route('/admin/bookings/export')
 @login_required(role='admin')
 def admin_export_bookings():
-    """تصدير الحجوزات إلى ملف Excel"""
     bookings = db.get_bookings()
     
     wb = Workbook()
     ws = wb.active
     ws.title = "الحجوزات"
     
-    headers = [
-        'رقم الحجز', 'الشاليه', 'اسم العميل', 'رقم الهاتف', 'الرقم القومي',
-        'تاريخ البداية', 'تاريخ النهاية', 'عدد الأيام', 'المبلغ (ج.م)',
-        'الحالة', 'اسم المالك', 'هاتف المالك', 'تاريخ الحجز'
-    ]
+    headers = ['رقم الحجز', 'الشاليه', 'اسم العميل', 'رقم الهاتف', 'الرقم القومي',
+               'تاريخ البداية', 'تاريخ النهاية', 'عدد الأيام', 'المبلغ (ج.م)',
+               'الحالة', 'اسم المالك', 'هاتف المالك', 'تاريخ الحجز']
     
     header_font = Font(bold=True, color="FFFFFF")
     header_fill = PatternFill(start_color="1a3c5e", end_color="1a3c5e", fill_type="solid")
-    header_alignment = Alignment(horizontal="center", vertical="center")
     
     for col, header in enumerate(headers, 1):
         cell = ws.cell(row=1, column=col, value=header)
         cell.font = header_font
         cell.fill = header_fill
-        cell.alignment = header_alignment
+        cell.alignment = Alignment(horizontal="center", vertical="center")
     
     for row_idx, booking in enumerate(bookings, 2):
-        status_map = {
-            'pending': 'قيد الانتظار',
-            'confirmed': 'مؤكد',
-            'cancelled': 'ملغي',
-            'completed': 'مكتمل',
-            'rejected': 'مرفوض'
-        }
-        
+        status_map = {'pending': 'قيد الانتظار', 'confirmed': 'مؤكد', 'cancelled': 'ملغي', 'completed': 'مكتمل', 'rejected': 'مرفوض'}
         ws.cell(row=row_idx, column=1, value=booking['id'])
         ws.cell(row=row_idx, column=2, value=booking['chalet_name_ar'])
         ws.cell(row=row_idx, column=3, value=booking['customer_name'])
@@ -1093,25 +818,9 @@ def admin_export_bookings():
         ws.cell(row=row_idx, column=13, value=booking['created_at'])
     
     for col in range(1, len(headers) + 1):
-        column_letter = get_column_letter(col)
-        ws.column_dimensions[column_letter].width = 18
-        
-        for row in range(1, len(bookings) + 2):
-            cell = ws.cell(row=row, column=col)
-            if row > 1:
-                cell.alignment = Alignment(horizontal="center", vertical="center")
+        ws.column_dimensions[get_column_letter(col)].width = 18
     
-    thin_border = Border(
-        left=Side(style='thin'),
-        right=Side(style='thin'),
-        top=Side(style='thin'),
-        bottom=Side(style='thin')
-    )
-    
-    for row in range(1, len(bookings) + 2):
-        for col in range(1, len(headers) + 1):
-            ws.cell(row=row, column=col).border = thin_border
-    
+    # إضافة صف الإجمالي
     total_row = len(bookings) + 2
     ws.cell(row=total_row, column=8, value="الإجمالي:")
     ws.cell(row=total_row, column=9, value=f"=SUM(I2:I{len(bookings)+1})")
@@ -1122,17 +831,12 @@ def admin_export_bookings():
     wb.save(output)
     output.seek(0)
     
-    return send_file(
-        output,
-        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        as_attachment=True,
-        download_name=f'الحجوزات_{datetime.now().strftime("%Y-%m-%d")}.xlsx'
-    )
+    return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                     as_attachment=True, download_name=f'الحجوزات_{datetime.now().strftime("%Y-%m-%d")}.xlsx')
 
 @app.route('/admin/booking/approve/<int:booking_id>')
 @login_required(role='admin')
 def admin_approve_booking(booking_id):
-    """الموافقة على حجز من قبل المدير"""
     db.update_booking_status(booking_id, 'confirmed')
     flash('تمت الموافقة على الحجز', 'success')
     return redirect(url_for('admin_bookings'))
@@ -1140,7 +844,6 @@ def admin_approve_booking(booking_id):
 @app.route('/admin/booking/cancel/<int:booking_id>')
 @login_required(role='admin')
 def admin_cancel_booking(booking_id):
-    """إلغاء حجز من قبل المدير"""
     db.update_booking_status(booking_id, 'cancelled')
     flash('تم إلغاء الحجز', 'warning')
     return redirect(url_for('admin_bookings'))
@@ -1148,132 +851,15 @@ def admin_cancel_booking(booking_id):
 @app.route('/admin/booking/complete/<int:booking_id>')
 @login_required(role='admin')
 def admin_complete_booking(booking_id):
-    """إكمال حجز"""
     db.update_booking_status(booking_id, 'completed')
     flash('تم إكمال الحجز', 'success')
     return redirect(url_for('admin_bookings'))
-
-# --- مسارات إدارة التصنيفات ---
-
-@app.route('/admin/categories')
-@login_required(role='admin')
-def admin_categories():
-    """إدارة التصنيفات"""
-    categories = db.get_categories()
-    return render_template('admin_categories.html', categories=categories)
-
-@app.route('/admin/category/add', methods=['GET', 'POST'])
-@login_required(role='admin')
-def admin_category_add():
-    """إضافة تصنيف جديد"""
-    if request.method == 'POST':
-        try:
-            name_ar = sanitize_html(request.form.get('name_ar', '').strip())
-            name_en = sanitize_html(request.form.get('name_en', '').strip())
-            description = sanitize_html(request.form.get('description', '').strip())
-            icon = sanitize_html(request.form.get('icon', 'bi-tag').strip())
-            
-            if not name_ar:
-                flash('الاسم بالعربية مطلوب', 'danger')
-                return render_template('admin_category_add.html')
-            
-            image = 'default_category.jpg'
-            if 'image' in request.files:
-                file = request.files['image']
-                if file and file.filename and allowed_file(file.filename):
-                    saved_image = save_uploaded_file(file, 'categories')
-                    if saved_image:
-                        image = saved_image
-            
-            conn = db.get_db_connection()
-            conn.execute('''
-                INSERT INTO categories (name_ar, name_en, description, icon, image)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (name_ar, name_en, description, icon, image))
-            conn.commit()
-            conn.close()
-            
-            flash('تم إضافة التصنيف بنجاح', 'success')
-            return redirect(url_for('admin_categories'))
-        except Exception as e:
-            flash(f'حدث خطأ: {str(e)}', 'danger')
-            return render_template('admin_category_add.html')
-    
-    return render_template('admin_category_add.html')
-
-@app.route('/admin/category/edit/<int:category_id>', methods=['GET', 'POST'])
-@login_required(role='admin')
-def admin_category_edit(category_id):
-    """تعديل تصنيف"""
-    category = db.get_category_by_id(category_id)
-    if not category:
-        flash('التصنيف غير موجود', 'danger')
-        return redirect(url_for('admin_categories'))
-    
-    if request.method == 'POST':
-        try:
-            name_ar = sanitize_html(request.form.get('name_ar', '').strip())
-            name_en = sanitize_html(request.form.get('name_en', '').strip())
-            description = sanitize_html(request.form.get('description', '').strip())
-            icon = sanitize_html(request.form.get('icon', 'bi-tag').strip())
-            
-            if not name_ar:
-                flash('الاسم بالعربية مطلوب', 'danger')
-                return render_template('admin_category_edit.html', category=category)
-            
-            image = category['image']
-            if 'image' in request.files:
-                file = request.files['image']
-                if file and file.filename and allowed_file(file.filename):
-                    if image and image != 'default_category.jpg':
-                        delete_uploaded_file(image)
-                    saved_image = save_uploaded_file(file, 'categories')
-                    if saved_image:
-                        image = saved_image
-            
-            conn = db.get_db_connection()
-            conn.execute('''
-                UPDATE categories 
-                SET name_ar = ?, name_en = ?, description = ?, icon = ?, image = ?
-                WHERE id = ?
-            ''', (name_ar, name_en, description, icon, image, category_id))
-            conn.commit()
-            conn.close()
-            
-            flash('تم تحديث التصنيف بنجاح', 'success')
-            return redirect(url_for('admin_categories'))
-        except Exception as e:
-            flash(f'حدث خطأ: {str(e)}', 'danger')
-            return render_template('admin_category_edit.html', category=category)
-    
-    return render_template('admin_category_edit.html', category=category)
-
-@app.route('/admin/category/delete/<int:category_id>')
-@login_required(role='admin')
-def admin_category_delete(category_id):
-    """حذف تصنيف"""
-    category = db.get_category_by_id(category_id)
-    if not category:
-        flash('التصنيف غير موجود', 'danger')
-        return redirect(url_for('admin_categories'))
-    
-    if category['image'] and category['image'] != 'default_category.jpg':
-        delete_uploaded_file(category['image'])
-    
-    conn = db.get_db_connection()
-    conn.execute('DELETE FROM categories WHERE id = ?', (category_id,))
-    conn.commit()
-    conn.close()
-    
-    flash('تم حذف التصنيف بنجاح', 'success')
-    return redirect(url_for('admin_categories'))
 
 # --- صفحات العميل ---
 
 @app.route('/book/<int:chalet_id>', methods=['GET', 'POST'])
 @login_required(role='customer')
 def book_chalet(chalet_id):
-    """حجز شاليه"""
     chalet = db.get_chalet_by_id(chalet_id)
     if not chalet:
         flash('الشاليه غير موجود', 'danger')
@@ -1296,7 +882,6 @@ def book_chalet(chalet_id):
                 flash('تاريخ النهاية يجب أن يكون بعد تاريخ البداية', 'danger')
                 return render_template('book.html', chalet=chalet)
             
-            # التحقق من التوفر مع تواريخ المالك
             if not db.check_availability_with_owner_dates(chalet_id, start_date, end_date):
                 flash('هذه التواريخ غير متاحة. يرجى اختيار تواريخ أخرى.', 'danger')
                 return render_template('book.html', chalet=chalet)
@@ -1325,12 +910,9 @@ def book_chalet(chalet_id):
     booked_dates = db.get_all_booked_dates(chalet_id)
     return render_template('book.html', chalet=chalet, booked_dates=booked_dates)
 
-# --- صفحة تفاصيل الحجز ---
-
 @app.route('/booking/<int:booking_id>')
 @login_required()
 def booking_detail(booking_id):
-    """عرض تفاصيل الحجز في صفحة منفصلة"""
     user = db.get_user_by_id(session['user_id'])
     booking = db.get_booking_by_id(booking_id)
     
@@ -1338,9 +920,9 @@ def booking_detail(booking_id):
         flash('الحجز غير موجود', 'danger')
         return redirect(url_for('dashboard'))
     
+    is_admin = user['role'] == 'admin'
     is_owner = False
     is_customer = False
-    is_admin = user['role'] == 'admin'
     
     if user['role'] == 'owner':
         chalet = db.get_chalet_by_id(booking['chalet_id'])
@@ -1358,27 +940,18 @@ def booking_detail(booking_id):
     customer = db.get_user_by_id(booking['customer_id'])
     owner = db.get_user_by_id(chalet['owner_id']) if chalet else None
     
-    booked_dates = db.get_booked_dates(booking['chalet_id'])
-    
     return render_template('booking_detail.html', 
-                         booking=booking,
-                         chalet=chalet,
-                         customer=customer,
-                         owner=owner,
-                         booked_dates=booked_dates,
-                         is_admin=is_admin,
-                         is_owner=is_owner,
-                         is_customer=is_customer)
+                         booking=booking, chalet=chalet,
+                         customer=customer, owner=owner,
+                         is_admin=is_admin, is_owner=is_owner, is_customer=is_customer)
 
 # --- خدمة الملفات ---
 
 @app.route('/static/uploads/<path:filename>')
 def uploaded_file(filename):
-    """عرض الملفات المرفوعة"""
     try:
         return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
     except Exception as e:
-        print(f"خطأ في عرض الملف: {e}")
         return send_from_directory(app.config['UPLOAD_FOLDER'], 'default_image.jpg')
 
 # --- معالجة الأخطاء ---
@@ -1394,4 +967,4 @@ def internal_error(error):
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=4444)
+    app.run(debug=True, host='0.0.0.0', port=5000)
