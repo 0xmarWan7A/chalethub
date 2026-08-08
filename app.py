@@ -760,6 +760,119 @@ def admin_export_users():
     return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                      as_attachment=True, download_name=f'المستخدمين_{datetime.now().strftime("%Y-%m-%d")}.xlsx')
 
+@app.route('/admin/categories')
+@login_required(role='admin')
+def admin_categories():
+    """إدارة التصنيفات"""
+    categories = db.get_categories()
+    return render_template('admin_categories.html', categories=categories)
+
+@app.route('/admin/category/add', methods=['GET', 'POST'])
+@login_required(role='admin')
+def admin_category_add():
+    """إضافة تصنيف جديد"""
+    if request.method == 'POST':
+        try:
+            name_ar = sanitize_html(request.form.get('name_ar', '').strip())
+            name_en = sanitize_html(request.form.get('name_en', '').strip())
+            description = sanitize_html(request.form.get('description', '').strip())
+            icon = sanitize_html(request.form.get('icon', 'bi-tag').strip())
+            
+            if not name_ar:
+                flash('الاسم بالعربية مطلوب', 'danger')
+                return render_template('admin_category_add.html')
+            
+            image = 'default_category.jpg'
+            if 'image' in request.files:
+                file = request.files['image']
+                if file and file.filename and allowed_file(file.filename):
+                    saved_image = save_uploaded_file(file, 'categories')
+                    if saved_image:
+                        image = saved_image
+            
+            conn = db.get_db_connection()
+            conn.execute('''
+                INSERT INTO categories (name_ar, name_en, description, icon, image)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (name_ar, name_en, description, icon, image))
+            conn.commit()
+            conn.close()
+            
+            flash('تم إضافة التصنيف بنجاح', 'success')
+            return redirect(url_for('admin_categories'))
+        except Exception as e:
+            flash(f'حدث خطأ: {str(e)}', 'danger')
+            return render_template('admin_category_add.html')
+    
+    return render_template('admin_category_add.html')
+
+@app.route('/admin/category/edit/<int:category_id>', methods=['GET', 'POST'])
+@login_required(role='admin')
+def admin_category_edit(category_id):
+    """تعديل تصنيف"""
+    category = db.get_category_by_id(category_id)
+    if not category:
+        flash('التصنيف غير موجود', 'danger')
+        return redirect(url_for('admin_categories'))
+    
+    if request.method == 'POST':
+        try:
+            name_ar = sanitize_html(request.form.get('name_ar', '').strip())
+            name_en = sanitize_html(request.form.get('name_en', '').strip())
+            description = sanitize_html(request.form.get('description', '').strip())
+            icon = sanitize_html(request.form.get('icon', 'bi-tag').strip())
+            
+            if not name_ar:
+                flash('الاسم بالعربية مطلوب', 'danger')
+                return render_template('admin_category_edit.html', category=category)
+            
+            image = category['image']
+            if 'image' in request.files:
+                file = request.files['image']
+                if file and file.filename and allowed_file(file.filename):
+                    if image and image != 'default_category.jpg':
+                        delete_uploaded_file(image)
+                    saved_image = save_uploaded_file(file, 'categories')
+                    if saved_image:
+                        image = saved_image
+            
+            conn = db.get_db_connection()
+            conn.execute('''
+                UPDATE categories 
+                SET name_ar = ?, name_en = ?, description = ?, icon = ?, image = ?
+                WHERE id = ?
+            ''', (name_ar, name_en, description, icon, image, category_id))
+            conn.commit()
+            conn.close()
+            
+            flash('تم تحديث التصنيف بنجاح', 'success')
+            return redirect(url_for('admin_categories'))
+        except Exception as e:
+            flash(f'حدث خطأ: {str(e)}', 'danger')
+            return render_template('admin_category_edit.html', category=category)
+    
+    return render_template('admin_category_edit.html', category=category)
+
+@app.route('/admin/category/delete/<int:category_id>')
+@login_required(role='admin')
+def admin_category_delete(category_id):
+    """حذف تصنيف"""
+    category = db.get_category_by_id(category_id)
+    if not category:
+        flash('التصنيف غير موجود', 'danger')
+        return redirect(url_for('admin_categories'))
+    
+    if category['image'] and category['image'] != 'default_category.jpg':
+        delete_uploaded_file(category['image'])
+    
+    conn = db.get_db_connection()
+    conn.execute('DELETE FROM categories WHERE id = ?', (category_id,))
+    conn.commit()
+    conn.close()
+    
+    flash('تم حذف التصنيف بنجاح', 'success')
+    return redirect(url_for('admin_categories'))
+
 @app.route('/admin/bookings')
 @login_required(role='admin')
 def admin_bookings():
