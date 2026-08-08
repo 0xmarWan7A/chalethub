@@ -1,6 +1,7 @@
 # database.py
 import os
 import json
+import uuid
 from datetime import datetime, timedelta
 from supabase import create_client, Client
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -19,6 +20,10 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY or SUPABASE_
 def get_db():
     """الحصول على اتصال Supabase"""
     return supabase
+
+def generate_uuid():
+    """توليد UUID جديد"""
+    return str(uuid.uuid4())
 
 def init_db():
     """تهيئة قاعدة البيانات"""
@@ -45,6 +50,7 @@ def insert_default_data():
         if not users.data:
             # مدير النظام
             admin = {
+                'id': generate_uuid(),
                 'username': 'admin',
                 'password': generate_password_hash('admin123'),
                 'role': 'admin',
@@ -57,7 +63,9 @@ def insert_default_data():
             supabase.table('users').insert(admin).execute()
             
             # مالك تجريبي
+            owner_id = generate_uuid()
             owner = {
+                'id': owner_id,
                 'username': 'owner',
                 'password': generate_password_hash('owner123'),
                 'role': 'owner',
@@ -67,11 +75,11 @@ def insert_default_data():
                 'national_id': '98765432109876',
                 'status': 'approved'
             }
-            owner_result = supabase.table('users').insert(owner).execute()
-            owner_id = owner_result.data[0]['id']
+            supabase.table('users').insert(owner).execute()
             
             # تفاصيل المالك
             supabase.table('owner_details').insert({
+                'id': generate_uuid(),
                 'user_id': owner_id,
                 'chalet_number': 'LSR-2024-001',
                 'business_name': 'قرية لاسرينا'
@@ -79,6 +87,7 @@ def insert_default_data():
             
             # عميل تجريبي
             customer = {
+                'id': generate_uuid(),
                 'username': 'customer',
                 'password': generate_password_hash('customer123'),
                 'role': 'customer',
@@ -98,12 +107,17 @@ def insert_default_data():
 # تهيئة قاعدة البيانات
 init_db()
 
-# --- دوال إدارة المستخدمين ---
+# ============================================================
+# دوال إدارة المستخدمين
+# ============================================================
 
 def get_user_by_id(user_id):
     """الحصول على مستخدم بواسطة المعرف"""
     try:
-        user = supabase.table('users').select('*, owner_details(*), customer_details(*)').eq('id', user_id).execute()
+        user = supabase.table('users')\
+            .select('*, owner_details(*), customer_details(*)')\
+            .eq('id', user_id)\
+            .execute()
         return user.data[0] if user.data else None
     except Exception as e:
         print(f"خطأ في get_user_by_id: {e}")
@@ -169,7 +183,9 @@ def reject_user(user_id):
 def create_user(data):
     """إنشاء مستخدم جديد"""
     try:
+        user_id = generate_uuid()
         user_data = {
+            'id': user_id,
             'username': data['username'],
             'password': generate_password_hash(data['password']),
             'role': data['role'],
@@ -182,10 +198,10 @@ def create_user(data):
         }
         
         result = supabase.table('users').insert(user_data).execute()
-        user_id = result.data[0]['id']
         
         if data['role'] == 'owner':
             supabase.table('owner_details').insert({
+                'id': generate_uuid(),
                 'user_id': user_id,
                 'chalet_number': data.get('chalet_number', ''),
                 'chalet_card_image': data.get('chalet_card_image', ''),
@@ -193,6 +209,7 @@ def create_user(data):
             }).execute()
         elif data['role'] == 'customer':
             supabase.table('customer_details').insert({
+                'id': generate_uuid(),
                 'user_id': user_id,
                 'date_of_birth': data.get('date_of_birth', ''),
                 'address': data.get('address', ''),
@@ -236,8 +253,9 @@ def update_user_role(user_id, new_role):
             details = supabase.table('owner_details').select('*').eq('user_id', user_id).execute()
             if not details.data:
                 supabase.table('owner_details').insert({
+                    'id': generate_uuid(),
                     'user_id': user_id,
-                    'chalet_number': f'PENDING-{user_id}',
+                    'chalet_number': f'PENDING-{user_id[:8]}',
                     'business_name': 'يحتاج إلى تحديث'
                 }).execute()
         
@@ -299,12 +317,14 @@ def get_user_statistics():
         print(f"خطأ في get_user_statistics: {e}")
         return {'total': 0, 'pending': 0, 'approved': 0, 'rejected': 0, 'owners': 0, 'customers': 0, 'admins': 0}
 
-# --- دوال إدارة التصنيفات ---
+# ============================================================
+# دوال إدارة التصنيفات
+# ============================================================
 
 def get_categories():
     """الحصول على جميع التصنيفات"""
     try:
-        categories = supabase.table('categories').select('*').order('id').execute()
+        categories = supabase.table('categories').select('*').order('created_at').execute()
         return categories.data if categories.data else []
     except Exception as e:
         print(f"خطأ في get_categories: {e}")
@@ -319,7 +339,9 @@ def get_category_by_id(category_id):
         print(f"خطأ في get_category_by_id: {e}")
         return None
 
-# --- دوال إدارة صور الشاليهات ---
+# ============================================================
+# دوال إدارة صور الشاليهات
+# ============================================================
 
 def add_chalet_image(chalet_id, image_path, is_main=False):
     """إضافة صورة للشاليه"""
@@ -328,6 +350,7 @@ def add_chalet_image(chalet_id, image_path, is_main=False):
             supabase.table('chalet_images').update({'is_main': False}).eq('chalet_id', chalet_id).execute()
         
         result = supabase.table('chalet_images').insert({
+            'id': generate_uuid(),
             'chalet_id': chalet_id,
             'image': image_path,
             'is_main': is_main
@@ -370,12 +393,15 @@ def set_main_chalet_image(image_id, chalet_id):
         print(f"خطأ في set_main_chalet_image: {e}")
         return False
 
-# --- دوال إدارة التواريخ المحجوزة من المالك ---
+# ============================================================
+# دوال إدارة التواريخ المحجوزة من المالك
+# ============================================================
 
 def add_owner_booked_date(chalet_id, date, reason=''):
     """إضافة تاريخ محجوز من قبل المالك"""
     try:
         supabase.table('owner_booked_dates').insert({
+            'id': generate_uuid(),
             'chalet_id': chalet_id,
             'date': date,
             'reason': reason
@@ -397,7 +423,11 @@ def delete_owner_booked_date(chalet_id, date):
 def get_owner_booked_dates(chalet_id):
     """الحصول على التواريخ المحجوزة من قبل المالك"""
     try:
-        dates = supabase.table('owner_booked_dates').select('*').eq('chalet_id', chalet_id).order('date').execute()
+        dates = supabase.table('owner_booked_dates')\
+            .select('*')\
+            .eq('chalet_id', chalet_id)\
+            .order('date')\
+            .execute()
         return dates.data if dates.data else []
     except Exception as e:
         print(f"خطأ في get_owner_booked_dates: {e}")
@@ -430,12 +460,16 @@ def get_booking_dates_for_chalet(chalet_id):
         print(f"خطأ في get_booking_dates_for_chalet: {e}")
         return []
 
-# --- دوال إدارة الشاليهات ---
+# ============================================================
+# دوال إدارة الشاليهات
+# ============================================================
 
 def create_chalet(data):
     """إنشاء شاليه جديد"""
     try:
+        chalet_id = generate_uuid()
         chalet_data = {
+            'id': chalet_id,
             'name_ar': data['name_ar'],
             'name_en': data.get('name_en', data['name_ar']),
             'description_ar': data.get('description_ar', ''),
@@ -592,12 +626,16 @@ def delete_chalet(chalet_id):
         print(f"خطأ في delete_chalet: {e}")
         return False
 
-# --- دوال إدارة الحجوزات ---
+# ============================================================
+# دوال إدارة الحجوزات
+# ============================================================
 
 def create_booking(data):
     """إنشاء حجز جديد"""
     try:
+        booking_id = generate_uuid()
         booking_data = {
+            'id': booking_id,
             'chalet_id': data['chalet_id'],
             'customer_id': data['customer_id'],
             'start_date': data['start_date'],
@@ -609,7 +647,6 @@ def create_booking(data):
         }
         
         result = supabase.table('bookings').insert(booking_data).execute()
-        booking_id = result.data[0]['id']
         
         # إضافة التواريخ المحجوزة
         start = datetime.strptime(data['start_date'], '%Y-%m-%d')
@@ -617,6 +654,7 @@ def create_booking(data):
         current = start
         while current <= end:
             supabase.table('booked_dates').insert({
+                'id': generate_uuid(),
                 'chalet_id': data['chalet_id'],
                 'booking_id': booking_id,
                 'date': current.strftime('%Y-%m-%d')
@@ -646,6 +684,7 @@ def get_all_booked_dates(chalet_id):
                 .select('date')\
                 .eq('chalet_id', chalet_id)\
                 .in_('booking_id', booking_ids)\
+                .gte('date', datetime.now().strftime('%Y-%m-%d'))\
                 .execute()
             booking_dates = [d['date'] for d in dates.data] if dates.data else []
         
@@ -828,7 +867,9 @@ def update_booking_status_by_owner(booking_id, status, owner_id):
         print(f"خطأ في update_booking_status_by_owner: {e}")
         return False
 
-# --- دوال الإحصائيات ---
+# ============================================================
+# دوال الإحصائيات
+# ============================================================
 
 def get_statistics():
     """الحصول على الإحصائيات"""
@@ -863,5 +904,27 @@ def get_statistics():
             'pending_users': 0,
             'revenue': 0
         }
+
+# ============================================================
+# دوال إضافية
+# ============================================================
+
+def get_owner_by_user_id(user_id):
+    """الحصول على بيانات المالك بواسطة معرف المستخدم"""
+    try:
+        owner = supabase.table('owner_details').select('*').eq('user_id', user_id).execute()
+        return owner.data[0] if owner.data else None
+    except Exception as e:
+        print(f"خطأ في get_owner_by_user_id: {e}")
+        return None
+
+def get_customer_by_user_id(user_id):
+    """الحصول على بيانات العميل بواسطة معرف المستخدم"""
+    try:
+        customer = supabase.table('customer_details').select('*').eq('user_id', user_id).execute()
+        return customer.data[0] if customer.data else None
+    except Exception as e:
+        print(f"خطأ في get_customer_by_user_id: {e}")
+        return None
 
 print("✅ تم تحميل قاعدة البيانات Supabase بنجاح!")
