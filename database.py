@@ -5,7 +5,8 @@ import os
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 
-DB_PATH = 'lasreina.db'
+# استخدام مسار مؤقت لـ Vercel
+DB_PATH = '/tmp/lasreina.db' if os.environ.get('VERCEL') else 'lasreina.db'
 
 def get_db_connection():
     """إنشاء اتصال بقاعدة البيانات"""
@@ -15,6 +16,11 @@ def get_db_connection():
 
 def init_db():
     """تهيئة قاعدة البيانات مع الجداول والبيانات الافتراضية"""
+    # التحقق من وجود قاعدة البيانات أولاً
+    if os.path.exists(DB_PATH):
+        print("✅ قاعدة البيانات موجودة بالفعل")
+        return
+    
     conn = get_db_connection()
     cursor = conn.cursor()
     
@@ -267,6 +273,15 @@ def init_db():
     conn.commit()
     conn.close()
     print("✅ تم تهيئة قاعدة البيانات بنجاح!")
+
+# تهيئة قاعدة البيانات عند الاستيراد
+if os.environ.get('VERCEL'):
+    # في بيئة Vercel، نقوم بتهيئة قاعدة البيانات فقط إذا لم تكن موجودة
+    if not os.path.exists(DB_PATH):
+        init_db()
+else:
+    # في البيئة المحلية، نقوم بتهيئة قاعدة البيانات
+    init_db()
 
 # --- دوال إدارة المستخدمين ---
 
