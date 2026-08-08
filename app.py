@@ -282,6 +282,7 @@ def signup():
             if not all([username, password, name, phone, national_id]):
                 flash('يرجى ملء جميع الحقول المطلوبة', 'danger')
                 return render_template('signup.html')
+                
             
             if password != confirm_password:
                 flash('كلمات المرور غير متطابقة', 'danger')
@@ -291,9 +292,6 @@ def signup():
                 flash('كلمة المرور يجب أن تكون 6 أحرف على الأقل', 'danger')
                 return render_template('signup.html')
             
-            if not re.match(r'^\+?20?1[0-9]{9}$', phone.replace(' ', '')):
-                flash('رقم الهاتف غير صحيح. يجب أن يكون 11 رقماً يبدأ بـ 01', 'danger')
-                return render_template('signup.html')
             
             existing = db.get_user_by_username(username)
             if existing:
