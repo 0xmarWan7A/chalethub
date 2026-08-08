@@ -1,0 +1,438 @@
+{% extends "base.html" %} {% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap mb-4">
+  <h1 class="h2 mb-2">إدارة حجوزاتي</h1>
+  <div class="d-flex flex-wrap gap-2">
+    <div class="d-flex flex-wrap gap-1">
+      <span class="badge bg-primary">إجمالي: {{ all_bookings|length }}</span>
+      <span class="badge bg-warning">معلق: {{ pending_bookings|length }}</span>
+    </div>
+    <a
+      href="{{ url_for('owner_export_bookings') }}"
+      class="btn btn-success btn-sm"
+    >
+      <i class="bi bi-file-earmark-excel"></i> تحميل Excel
+    </a>
+  </div>
+</div>
+
+<!-- إحصائيات سريعة -->
+<div class="row g-2 g-md-3 mb-4">
+  <div class="col-6 col-sm-3">
+    <div class="card text-white bg-warning">
+      <div class="card-body p-2 p-md-3 text-center">
+        <h6 class="mb-0 small">قيد الانتظار</h6>
+        <h3 class="mb-0">{{ pending_bookings|length }}</h3>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-3">
+    <div class="card text-white bg-success">
+      <div class="card-body p-2 p-md-3 text-center">
+        <h6 class="mb-0 small">مؤكدة</h6>
+        <h3 class="mb-0">
+          {{ all_bookings|selectattr('status', 'equalto',
+          'confirmed')|list|length }}
+        </h3>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-3">
+    <div class="card text-white bg-danger">
+      <div class="card-body p-2 p-md-3 text-center">
+        <h6 class="mb-0 small">ملغية</h6>
+        <h3 class="mb-0">
+          {{ all_bookings|selectattr('status', 'equalto',
+          'cancelled')|list|length }}
+        </h3>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-sm-3">
+    <div class="card text-white bg-info">
+      <div class="card-body p-2 p-md-3 text-center">
+        <h6 class="mb-0 small">مكتملة</h6>
+        <h3 class="mb-0">
+          {{ all_bookings|selectattr('status', 'equalto',
+          'completed')|list|length }}
+        </h3>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- الحجوزات المعلقة -->
+<div class="card mb-4">
+  <div class="card-header bg-warning py-2">
+    <div class="d-flex justify-content-between align-items-center flex-wrap">
+      <h6 class="mb-0">
+        <i class="bi bi-clock-history"></i> طلبات الحجز المعلقة
+      </h6>
+      <span class="badge bg-danger">{{ pending_bookings|length }}</span>
+    </div>
+  </div>
+  <div class="card-body p-2 p-md-3">
+    {% if pending_bookings %}
+    <div class="table-responsive">
+      <table class="table table-striped table-hover table-sm mb-0">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>الشاليه</th>
+            <th>العميل</th>
+            <th class="d-none d-md-table-cell">التاريخ</th>
+            <th class="d-none d-lg-table-cell">المبلغ</th>
+            <th>الإجراءات</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for booking in pending_bookings %}
+          <tr>
+            <td>{{ booking.id }}</td>
+            <td class="small">{{ booking.chalet_name_ar }}</td>
+            <td class="small">
+              <button
+                class="btn btn-sm btn-info"
+                data-bs-toggle="modal"
+                data-bs-target="#customerModal{{ booking.id }}"
+                title="بيانات العميل"
+              >
+                <i class="bi bi-person"></i> {{ booking.customer_name }}
+              </button>
+            </td>
+            <td class="d-none d-md-table-cell small">
+              {{ booking.start_date }} - {{ booking.end_date }}
+            </td>
+            <td class="d-none d-lg-table-cell small">
+              {{ booking.amount }} ج.م
+            </td>
+            <td>
+              <div class="btn-group btn-group-sm">
+                <a
+                  href="{{ url_for('owner_approve_booking', booking_id=booking.id) }}"
+                  class="btn btn-success"
+                  title="موافقة"
+                >
+                  <i class="bi bi-check-circle"></i> قبول
+                </a>
+                <a
+                  href="{{ url_for('owner_reject_booking', booking_id=booking.id) }}"
+                  class="btn btn-danger"
+                  title="رفض"
+                  onclick="return confirm('هل أنت متأكد من رفض هذا الحجز؟');"
+                >
+                  <i class="bi bi-x-circle"></i> رفض
+                </a>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Modal بيانات العميل -->
+          <div
+            class="modal fade"
+            id="customerModal{{ booking.id }}"
+            tabindex="-1"
+          >
+            <div class="modal-dialog modal-dialog-scrollable">
+              <div class="modal-content">
+                <div class="modal-header bg-info text-white py-2">
+                  <h6 class="modal-title">
+                    <i class="bi bi-person-badge"></i> بيانات العميل
+                  </h6>
+                  <button
+                    type="button"
+                    class="btn-close btn-close-white"
+                    data-bs-dismiss="modal"
+                  ></button>
+                </div>
+                <div class="modal-body">
+                  <div class="row">
+                    <div class="col-12">
+                      <div class="card bg-light mb-3">
+                        <div class="card-body">
+                          <h6 class="border-bottom pb-2">
+                            <i class="bi bi-person"></i> معلومات العميل
+                          </h6>
+                          <p class="mb-1">
+                            <strong>الاسم:</strong> {{ booking.customer_name }}
+                          </p>
+                          <p class="mb-1">
+                            <strong>الهاتف:</strong>
+                            <a href="tel:{{ booking.customer_phone }}"
+                              >{{ booking.customer_phone }}</a
+                            >
+                          </p>
+                          <p class="mb-0">
+                            <strong>الرقم القومي:</strong> {{
+                            booking.customer_national_id or 'غير محدد' }}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-12">
+                      <div class="card bg-light">
+                        <div class="card-body">
+                          <h6 class="border-bottom pb-2">
+                            <i class="bi bi-calendar-check"></i> معلومات الحجز
+                          </h6>
+                          <p class="mb-1">
+                            <strong>الشاليه:</strong> {{ booking.chalet_name_ar
+                            }}
+                          </p>
+                          <p class="mb-1">
+                            <strong>التاريخ:</strong> {{ booking.start_date }} -
+                            {{ booking.end_date }}
+                          </p>
+                          <p class="mb-1">
+                            <strong>عدد الأيام:</strong> {{ booking.days }}
+                          </p>
+                          <p class="mb-0">
+                            <strong>المبلغ:</strong> {{ booking.amount }} ج.م
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-sm"
+                    data-bs-dismiss="modal"
+                  >
+                    إغلاق
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-muted text-center mb-0 small">لا توجد طلبات حجز معلقة</p>
+    {% endif %}
+  </div>
+</div>
+
+<!-- جميع الحجوزات -->
+<div class="card">
+  <div class="card-header bg-primary text-white py-2">
+    <div class="d-flex justify-content-between align-items-center flex-wrap">
+      <h6 class="mb-0"><i class="bi bi-list-check"></i> جميع الحجوزات</h6>
+      <span class="badge bg-light text-dark">{{ all_bookings|length }}</span>
+    </div>
+  </div>
+  <div class="card-body p-2 p-md-3">
+    <!-- بحث -->
+    <div class="mb-3">
+      <input
+        type="text"
+        id="searchInput"
+        class="form-control form-control-sm"
+        placeholder="🔍 بحث عن حجز..."
+      />
+    </div>
+
+    <div class="table-responsive">
+      <table
+        class="table table-striped table-hover table-sm mb-0"
+        id="bookingsTable"
+      >
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>الشاليه</th>
+            <th class="d-none d-sm-table-cell">العميل</th>
+            <th class="d-none d-md-table-cell">التاريخ</th>
+            <th class="d-none d-lg-table-cell">المبلغ</th>
+            <th>الحالة</th>
+            <th>الإجراءات</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for booking in all_bookings %}
+          <tr>
+            <td>{{ booking.id }}</td>
+            <td class="small">{{ booking.chalet_name_ar }}</td>
+            <td class="d-none d-sm-table-cell small">
+              {{ booking.customer_name }}
+            </td>
+            <td class="d-none d-md-table-cell small">
+              {{ booking.start_date }} - {{ booking.end_date }}
+            </td>
+            <td class="d-none d-lg-table-cell small">
+              {{ booking.amount }} ج.م
+            </td>
+            <td>
+              <span
+                class="badge {% if booking.status == 'pending' %}bg-warning{% elif booking.status == 'confirmed' %}bg-success{% elif booking.status == 'cancelled' %}bg-danger{% else %}bg-info{% endif %}"
+              >
+                {% if booking.status == 'pending' %}قيد الانتظار{% elif
+                booking.status == 'confirmed' %}مؤكد{% elif booking.status ==
+                'cancelled' %}ملغي{% else %}مكتمل{% endif %}
+              </span>
+            </td>
+            <td>
+              <div class="btn-group btn-group-sm">
+                <button
+                  class="btn btn-info"
+                  data-bs-toggle="modal"
+                  data-bs-target="#bookingDetailModal{{ booking.id }}"
+                  title="عرض التفاصيل"
+                >
+                  <i class="bi bi-eye"></i>
+                </button>
+                {% if booking.status == 'confirmed' %}
+                <a
+                  href="{{ url_for('owner_cancel_booking', booking_id=booking.id) }}"
+                  class="btn btn-danger"
+                  title="إلغاء الحجز المؤكد"
+                  onclick="
+                    return confirm(
+                      'هل أنت متأكد من إلغاء هذا الحجز المؤكد؟ سيتم إزالة التواريخ المحجوزة.',
+                    );
+                  "
+                >
+                  <i class="bi bi-x-circle"></i>
+                </a>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+
+          <!-- Modal تفاصيل الحجز -->
+          <div
+            class="modal fade"
+            id="bookingDetailModal{{ booking.id }}"
+            tabindex="-1"
+          >
+            <div class="modal-dialog modal-dialog-scrollable">
+              <div class="modal-content">
+                <div class="modal-header bg-primary text-white py-2">
+                  <h6 class="modal-title">
+                    <i class="bi bi-calendar-check"></i> تفاصيل الحجز #{{
+                    booking.id }}
+                  </h6>
+                  <button
+                    type="button"
+                    class="btn-close btn-close-white"
+                    data-bs-dismiss="modal"
+                  ></button>
+                </div>
+                <div class="modal-body">
+                  <div class="row">
+                    <div class="col-12 col-md-6">
+                      <div class="card bg-light mb-3">
+                        <div class="card-body">
+                          <h6 class="border-bottom pb-2">
+                            <i class="bi bi-person"></i> معلومات العميل
+                          </h6>
+                          <p class="mb-1">
+                            <strong>الاسم:</strong> {{ booking.customer_name }}
+                          </p>
+                          <p class="mb-1">
+                            <strong>الهاتف:</strong>
+                            <a href="tel:{{ booking.customer_phone }}"
+                              >{{ booking.customer_phone }}</a
+                            >
+                          </p>
+                          <p class="mb-0">
+                            <strong>الرقم القومي:</strong> {{
+                            booking.customer_national_id or 'غير محدد' }}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                      <div class="card bg-light mb-3">
+                        <div class="card-body">
+                          <h6 class="border-bottom pb-2">
+                            <i class="bi bi-calendar3"></i> تفاصيل الحجز
+                          </h6>
+                          <p class="mb-1">
+                            <strong>الشاليه:</strong> {{ booking.chalet_name_ar
+                            }}
+                          </p>
+                          <p class="mb-1">
+                            <strong>التاريخ:</strong> {{ booking.start_date }} -
+                            {{ booking.end_date }}
+                          </p>
+                          <p class="mb-1">
+                            <strong>عدد الأيام:</strong> {{ booking.days }}
+                          </p>
+                          <p class="mb-0">
+                            <strong>المبلغ:</strong> {{ booking.amount }} ج.م
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-sm"
+                    data-bs-dismiss="modal"
+                  >
+                    إغلاق
+                  </button>
+                  {% if booking.status == 'confirmed' %}
+                  <a
+                    href="{{ url_for('owner_cancel_booking', booking_id=booking.id) }}"
+                    class="btn btn-danger btn-sm"
+                    onclick="
+                      return confirm('هل أنت متأكد من إلغاء هذا الحجز المؤكد؟');
+                    "
+                  >
+                    <i class="bi bi-x-circle"></i> إلغاء الحجز
+                  </a>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  // بحث في الجدول
+  document.addEventListener("DOMContentLoaded", function () {
+    const searchInput = document.getElementById("searchInput");
+    const table = document.getElementById("bookingsTable");
+
+    searchInput.addEventListener("keyup", function () {
+      const filter = this.value.toLowerCase();
+      const rows = table
+        .getElementsByTagName("tbody")[0]
+        .getElementsByTagName("tr");
+
+      for (let row of rows) {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(filter) ? "" : "none";
+      }
+    });
+  });
+</script>
+
+<style>
+  @media (max-width: 576px) {
+    .card-body {
+      padding: 0.5rem !important;
+    }
+    .btn-group-sm .btn {
+      font-size: 0.6rem;
+      padding: 0.1rem 0.25rem;
+    }
+    .table-sm td,
+    .table-sm th {
+      padding: 0.2rem 0.2rem;
+      font-size: 0.65rem;
+    }
+  }
+</style>
+{% endblock %}

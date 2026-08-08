@@ -1,0 +1,290 @@
+{% extends "base.html" %} {% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap mb-4">
+  <h1 class="h2 mb-2">إدارة التواريخ المحجوزة - {{ chalet.name_ar }}</h1>
+  <div>
+    <a
+      href="{{ url_for('chalet_detail', chalet_id=chalet.id) }}"
+      class="btn btn-secondary btn-sm"
+    >
+      <i class="bi bi-arrow-right"></i> رجوع للشاليه
+    </a>
+    <a
+      href="{{ url_for('owner_chalet_images', chalet_id=chalet.id) }}"
+      class="btn btn-info btn-sm"
+    >
+      <i class="bi bi-images"></i> إدارة الصور
+    </a>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-4">
+    <!-- إضافة رنج تواريخ -->
+    <div class="card">
+      <div class="card-header bg-success text-white">
+        <h6 class="mb-0">
+          <i class="bi bi-calendar-range"></i> إضافة رنج تواريخ
+        </h6>
+      </div>
+      <div class="card-body">
+        <form method="POST" id="rangeDateForm">
+          <input type="hidden" name="action" value="add_range" />
+          <div class="mb-3">
+            <label class="form-label">من تاريخ</label>
+            <input
+              type="date"
+              name="start_date"
+              id="start_date"
+              class="form-control"
+              required
+              min="{{ now|default('2024-01-01') }}"
+            />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">إلى تاريخ</label>
+            <input
+              type="date"
+              name="end_date"
+              id="end_date"
+              class="form-control"
+              required
+              min="{{ now|default('2024-01-01') }}"
+            />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">سبب الحجز (اختياري)</label>
+            <input
+              type="text"
+              name="reason"
+              class="form-control"
+              placeholder="مثال: إجازة سنوية، صيانة..."
+            />
+          </div>
+          <div class="mb-3 form-check">
+            <input
+              type="checkbox"
+              class="form-check-input"
+              name="include_weekends"
+              id="includeWeekends"
+              checked
+            />
+            <label class="form-check-label" for="includeWeekends"
+              >تضمين عطلات نهاية الأسبوع (الجمعة والسبت)</label
+            >
+          </div>
+          <div
+            id="rangePreview"
+            class="alert alert-info mb-3"
+            style="display: none"
+          >
+            <i class="bi bi-info-circle"></i>
+            <span id="rangeCount">0</span> يوم سيتم حجزهم
+          </div>
+          <button type="submit" class="btn btn-success w-100">
+            <i class="bi bi-calendar-range"></i> إضافة رنج تواريخ
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-8">
+    <!-- التواريخ المحجوزة من المالك -->
+    <div class="card mb-3">
+      <div class="card-header bg-primary text-white">
+        <h6 class="mb-0">
+          <i class="bi bi-calendar-check"></i> التواريخ المحجوزة من قبلك ({{
+          booked_dates|length }})
+        </h6>
+      </div>
+      <div class="card-body">
+        {% if booked_dates %}
+        <div class="table-responsive">
+          <table class="table table-striped table-sm">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>التاريخ</th>
+                <th>السبب</th>
+                <th>تاريخ الإضافة</th>
+                <th>الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for date in booked_dates %}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td><span class="badge bg-danger">{{ date.date }}</span></td>
+                <td>{{ date.reason or '-' }}</td>
+                <td>{{ date.created_at }}</td>
+                <td>
+                  <form method="POST" style="display: inline">
+                    <input type="hidden" name="action" value="remove" />
+                    <input type="hidden" name="date" value="{{ date.date }}" />
+                    <button
+                      type="submit"
+                      class="btn btn-sm btn-danger"
+                      onclick="
+                        return confirm(
+                          'هل أنت متأكد من إزالة هذا التاريخ المحجوز؟',
+                        );
+                      "
+                    >
+                      <i class="bi bi-x-circle"></i>
+                    </button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-muted text-center py-3">لا توجد تواريخ محجوزة من قبلك</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- التواريخ المحجوزة من الحجوزات -->
+    <div class="card">
+      <div class="card-header bg-success text-white">
+        <h6 class="mb-0">
+          <i class="bi bi-calendar2-week"></i> التواريخ المحجوزة من الحجوزات
+          المؤكدة
+        </h6>
+      </div>
+      <div class="card-body">
+        {% if booking_dates %}
+        <div class="table-responsive">
+          <table class="table table-striped table-sm">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>التاريخ</th>
+                <th>نوع الحجز</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for date in booking_dates %}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td><span class="badge bg-danger">{{ date.date }}</span></td>
+                <td><span class="badge bg-info">حجز مؤكد</span></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-muted text-center py-3">
+          لا توجد حجوزات مؤكدة لهذا الشاليه
+        </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // معاينة عدد الأيام في الرنج
+  document.addEventListener("DOMContentLoaded", function () {
+    const startDate = document.getElementById("start_date");
+    const endDate = document.getElementById("end_date");
+    const rangePreview = document.getElementById("rangePreview");
+    const rangeCount = document.getElementById("rangeCount");
+    const includeWeekends = document.getElementById("includeWeekends");
+
+    function updateRangePreview() {
+      if (startDate.value && endDate.value) {
+        const start = new Date(startDate.value);
+        const end = new Date(endDate.value);
+
+        if (end >= start) {
+          let count = 0;
+          let current = new Date(start);
+
+          while (current <= end) {
+            const day = current.getDay();
+            if (includeWeekends.checked || (day !== 5 && day !== 6)) {
+              count++;
+            }
+            current.setDate(current.getDate() + 1);
+          }
+
+          rangeCount.textContent = count;
+          rangePreview.style.display = "block";
+        } else {
+          rangePreview.style.display = "none";
+        }
+      } else {
+        rangePreview.style.display = "none";
+      }
+    }
+
+    startDate.addEventListener("change", function () {
+      endDate.min = this.value;
+      if (endDate.value && endDate.value < this.value) {
+        endDate.value = "";
+      }
+      updateRangePreview();
+    });
+
+    endDate.addEventListener("change", updateRangePreview);
+    includeWeekends.addEventListener("change", updateRangePreview);
+  });
+
+  // التحقق من صحة النموذج
+  document
+    .getElementById("rangeDateForm")
+    .addEventListener("submit", function (e) {
+      const startDate = document.getElementById("start_date");
+      const endDate = document.getElementById("end_date");
+
+      if (startDate.value && endDate.value) {
+        if (startDate.value > endDate.value) {
+          e.preventDefault();
+          alert("تاريخ البداية يجب أن يكون قبل تاريخ النهاية");
+          return false;
+        }
+
+        // التحقق من عدد الأيام (حد أقصى 365 يوم)
+        const start = new Date(startDate.value);
+        const end = new Date(endDate.value);
+        const diffTime = Math.abs(end - start);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays > 365) {
+          if (
+            !confirm("أنت على وشك إضافة " + diffDays + " يوم. هل أنت متأكد؟")
+          ) {
+            e.preventDefault();
+            return false;
+          }
+        }
+      }
+    });
+
+  // تحديث تاريخ النهاية تلقائياً عند اختيار تاريخ البداية
+  document.addEventListener("DOMContentLoaded", function () {
+    const startDate = document.querySelector('input[name="start_date"]');
+    const endDate = document.querySelector('input[name="end_date"]');
+
+    if (startDate && endDate) {
+      startDate.addEventListener("change", function () {
+        endDate.min = this.value;
+        if (endDate.value && endDate.value < this.value) {
+          endDate.value = "";
+        }
+      });
+    }
+  });
+</script>
+
+<style>
+  @media (max-width: 576px) {
+    .card-body {
+      padding: 0.75rem !important;
+    }
+  }
+</style>
+{% endblock %}

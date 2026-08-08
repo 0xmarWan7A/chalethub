@@ -1,0 +1,68 @@
+{% extends "base.html" %} {% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1>إدارة الشاليهات</h1>
+  <a href="{{ url_for('admin_chalets') }}" class="btn btn-secondary">
+    <i class="bi bi-arrow-repeat"></i> تحديث
+  </a>
+</div>
+
+<!-- الشاليهات قيد المراجعة -->
+<div class="card">
+  <div class="card-header bg-warning">
+    <h5 class="mb-0">الشاليهات قيد المراجعة</h5>
+  </div>
+  <div class="card-body">
+    {% if pending_chalets %}
+    <div class="table-responsive">
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>الاسم</th>
+            <th>المالك</th>
+            <th>التصنيف</th>
+            <th>السعر</th>
+            <th>الإجراءات</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for chalet in pending_chalets %}
+          <tr>
+            <td>{{ chalet.id }}</td>
+            <td>{{ chalet.name_ar }}</td>
+            <td>{{ chalet.owner_name }}</td>
+            <td>{{ chalet.category_name_ar or 'غير مصنف' }}</td>
+            <td>ج.م{{ chalet.price_per_night }}</td>
+            <td>
+              <a
+                href="{{ url_for('admin_approve_chalet', chalet_id=chalet.id) }}"
+                class="btn btn-sm btn-success"
+              >
+                <i class="bi bi-check-circle"></i> موافقة
+              </a>
+              <a
+                href="{{ url_for('admin_reject_chalet', chalet_id=chalet.id) }}"
+                class="btn btn-sm btn-danger"
+                onclick="return confirm('هل أنت متأكد من رفض هذا الشاليه؟');"
+              >
+                <i class="bi bi-x-circle"></i> رفض
+              </a>
+              <a
+                href="{{ url_for('admin_delete_chalet', chalet_id=chalet.id) }}"
+                class="btn btn-sm btn-danger"
+                onclick="return confirm('هل أنت متأكد من حذف هذا الشاليه؟');"
+              >
+                <i class="bi bi-trash"></i> حذف
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-muted">لا توجد شاليهات قيد المراجعة</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

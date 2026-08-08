@@ -1,0 +1,1104 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=5.0"
+    />
+    <meta name="theme-color" content="#1a3c5e" />
+    <title>{% block title %}شاليهك - حجز الشاليهات الفاخرة{% endblock %}</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --primary-color: #1a3c5e;
+        --secondary-color: #2d6a9f;
+        --accent-color: #c9a84c;
+        --light-bg: #f8f9fa;
+        --dark-bg: #0d1117;
+        --dark-card: #161b22;
+        --dark-border: #30363d;
+        --dark-text: #e6edf3;
+        --dark-text-muted: #8b949e;
+        --dark-table-stripe: rgba(255, 255, 255, 0.03);
+        --dark-table-hover: rgba(255, 255, 255, 0.06);
+        --transition-speed: 0.3s;
+        --navbar-height: 60px;
+      }
+
+      * {
+        font-family: "Cairo", sans-serif;
+        box-sizing: border-box;
+      }
+
+      body {
+        padding-top: 70px;
+        background: var(--light-bg);
+        color: #212529;
+        transition:
+          background var(--transition-speed),
+          color var(--transition-speed);
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      /* Dark Mode Styles */
+      body.dark-mode {
+        background: var(--dark-bg);
+        color: var(--dark-text);
+      }
+
+      body.dark-mode .card {
+        background: var(--dark-card);
+        color: var(--dark-text);
+        border: 1px solid var(--dark-border);
+      }
+
+      body.dark-mode .card:hover {
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+      }
+
+      body.dark-mode .card-header {
+        border-bottom: 1px solid var(--dark-border);
+      }
+
+      body.dark-mode .navbar {
+        background: rgba(13, 17, 23, 0.95) !important;
+        border-bottom: 1px solid var(--dark-border);
+      }
+
+      body.dark-mode .footer {
+        background: var(--dark-card);
+        border-top: 1px solid var(--dark-border);
+      }
+
+      body.dark-mode .bg-light {
+        background: var(--dark-card) !important;
+      }
+
+      body.dark-mode .text-muted {
+        color: var(--dark-text-muted) !important;
+      }
+
+      /* تحسين الجداول في Dark Mode */
+      body.dark-mode .table {
+        color: var(--dark-text) !important;
+      }
+
+      body.dark-mode .table thead th {
+        color: var(--dark-text) !important;
+        border-bottom: 2px solid var(--dark-border);
+        background-color: var(--dark-card);
+      }
+
+      body.dark-mode .table tbody td {
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border);
+      }
+
+      body.dark-mode .table-striped tbody tr:nth-of-type(odd) {
+        background-color: var(--dark-table-stripe);
+      }
+
+      body.dark-mode .table-striped tbody tr:nth-of-type(even) {
+        background-color: transparent;
+      }
+
+      body.dark-mode .table-hover tbody tr:hover {
+        background-color: var(--dark-table-hover) !important;
+      }
+
+      body.dark-mode .table tbody tr {
+        transition: background-color 0.2s ease;
+      }
+
+      body.dark-mode .table .table-dark {
+        background-color: #1a1a1a;
+      }
+
+      body.dark-mode .table .table-light {
+        background-color: var(--dark-card);
+        color: var(--dark-text);
+      }
+
+      body.dark-mode .table .table-primary {
+        background-color: rgba(13, 110, 253, 0.2);
+        color: var(--dark-text);
+      }
+
+      body.dark-mode .table .table-success {
+        background-color: rgba(40, 167, 69, 0.2);
+        color: var(--dark-text);
+      }
+
+      body.dark-mode .table .table-warning {
+        background-color: rgba(255, 193, 7, 0.2);
+        color: var(--dark-text);
+      }
+
+      body.dark-mode .table .table-danger {
+        background-color: rgba(220, 53, 69, 0.2);
+        color: var(--dark-text);
+      }
+
+      body.dark-mode .table .table-info {
+        background-color: rgba(13, 202, 240, 0.2);
+        color: var(--dark-text);
+      }
+
+      body.dark-mode .table .table-secondary {
+        background-color: rgba(108, 117, 125, 0.2);
+        color: var(--dark-text);
+      }
+
+      /* تحسين النصوص في الجداول */
+      body.dark-mode .table td a {
+        color: #58a6ff !important;
+      }
+
+      body.dark-mode .table td a:hover {
+        color: #79c0ff !important;
+      }
+
+      body.dark-mode .table td .badge {
+        color: #fff !important;
+      }
+
+      body.dark-mode .table td .text-muted {
+        color: var(--dark-text-muted) !important;
+      }
+
+      body.dark-mode .form-control,
+      body.dark-mode .form-select {
+        background-color: var(--dark-card);
+        color: var(--dark-text);
+        border-color: var(--dark-border);
+      }
+
+      body.dark-mode .form-control:focus,
+      body.dark-mode .form-select:focus {
+        background-color: var(--dark-card);
+        color: var(--dark-text);
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 0.25rem rgba(201, 168, 76, 0.25);
+      }
+
+      body.dark-mode .form-control::placeholder {
+        color: var(--dark-text-muted);
+      }
+
+      body.dark-mode .alert-info {
+        background-color: rgba(13, 110, 253, 0.15);
+        color: #8bb9fe;
+        border-color: rgba(13, 110, 253, 0.2);
+      }
+
+      body.dark-mode .alert-success {
+        background-color: rgba(40, 167, 69, 0.15);
+        color: #7ee08a;
+        border-color: rgba(40, 167, 69, 0.2);
+      }
+
+      body.dark-mode .alert-warning {
+        background-color: rgba(255, 193, 7, 0.15);
+        color: #ffda6a;
+        border-color: rgba(255, 193, 7, 0.2);
+      }
+
+      body.dark-mode .alert-danger {
+        background-color: rgba(220, 53, 69, 0.15);
+        color: #f88a8a;
+        border-color: rgba(220, 53, 69, 0.2);
+      }
+
+      body.dark-mode .modal-content {
+        background-color: var(--dark-card);
+        color: var(--dark-text);
+        border: 1px solid var(--dark-border);
+      }
+
+      body.dark-mode .modal-header,
+      body.dark-mode .modal-footer {
+        border-color: var(--dark-border);
+      }
+
+      body.dark-mode .modal-header .btn-close {
+        filter: invert(1) grayscale(100%) brightness(200%);
+      }
+
+      body.dark-mode .dropdown-menu {
+        background-color: var(--dark-card);
+        border: 1px solid var(--dark-border);
+        color: var(--dark-text);
+      }
+
+      body.dark-mode .dropdown-item {
+        color: var(--dark-text);
+      }
+
+      body.dark-mode .dropdown-item:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+        color: var(--dark-text);
+      }
+
+      body.dark-mode .dropdown-divider {
+        border-color: var(--dark-border);
+      }
+
+      body.dark-mode .badge.bg-light {
+        background-color: var(--dark-border) !important;
+        color: var(--dark-text);
+      }
+
+      body.dark-mode .bg-primary {
+        background-color: #1a3c5e !important;
+      }
+
+      body.dark-mode .bg-success {
+        background-color: #1a6d3a !important;
+      }
+
+      body.dark-mode .bg-info {
+        background-color: #1a5a7a !important;
+      }
+
+      body.dark-mode .bg-warning {
+        background-color: #7a6a1a !important;
+        color: #fff;
+      }
+
+      body.dark-mode .bg-danger {
+        background-color: #7a1a1a !important;
+      }
+
+      body.dark-mode .bg-secondary {
+        background-color: #2d333b !important;
+      }
+
+      body.dark-mode .border {
+        border-color: var(--dark-border) !important;
+      }
+
+      body.dark-mode .border-primary {
+        border-color: #1a3c5e !important;
+      }
+
+      body.dark-mode .border-success {
+        border-color: #1a6d3a !important;
+      }
+
+      body.dark-mode .border-warning {
+        border-color: #7a6a1a !important;
+      }
+
+      body.dark-mode .border-info {
+        border-color: #1a5a7a !important;
+      }
+
+      /* تحسين شريط التمرير */
+      body.dark-mode .table-responsive::-webkit-scrollbar {
+        height: 8px;
+      }
+
+      body.dark-mode .table-responsive::-webkit-scrollbar-track {
+        background: var(--dark-card);
+      }
+
+      body.dark-mode .table-responsive::-webkit-scrollbar-thumb {
+        background: var(--dark-border);
+        border-radius: 10px;
+      }
+
+      body.dark-mode .table-responsive::-webkit-scrollbar-thumb:hover {
+        background: var(--dark-text-muted);
+      }
+
+      /* Navbar */
+      .navbar {
+        background: rgba(26, 60, 94, 0.95) !important;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+        transition: background var(--transition-speed);
+        min-height: var(--navbar-height);
+        padding: 8px 0;
+      }
+
+      body.dark-mode .navbar {
+        background: rgba(13, 17, 23, 0.95) !important;
+        border-bottom: 1px solid var(--dark-border);
+      }
+
+      .navbar-brand {
+        font-weight: 800;
+        font-size: 1.2rem;
+        color: white !important;
+        white-space: nowrap;
+      }
+
+      .navbar-brand i {
+        color: var(--accent-color);
+      }
+
+      .nav-link {
+        color: rgba(255, 255, 255, 0.8) !important;
+        font-weight: 600;
+        transition: 0.3s;
+        padding: 8px 12px !important;
+        font-size: 0.95rem;
+      }
+
+      .nav-link:hover {
+        color: white !important;
+        transform: translateY(-2px);
+      }
+
+      /* Buttons */
+      .btn-gold {
+        background: var(--accent-color);
+        color: #fff;
+        border: none;
+        padding: 10px 25px;
+        font-weight: 600;
+        border-radius: 50px;
+        transition: 0.3s;
+        white-space: nowrap;
+      }
+
+      .btn-gold:hover {
+        background: #b8943a;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 20px rgba(201, 168, 76, 0.3);
+        color: #fff;
+      }
+
+      .btn-gold:active {
+        transform: scale(0.98);
+      }
+
+      .btn-outline-gold {
+        color: var(--accent-color);
+        border: 2px solid var(--accent-color);
+        background: transparent;
+        border-radius: 50px;
+        padding: 8px 20px;
+        font-weight: 600;
+        transition: 0.3s;
+      }
+
+      .btn-outline-gold:hover {
+        background: var(--accent-color);
+        color: #fff;
+        transform: translateY(-2px);
+      }
+
+      body.dark-mode .btn-outline-gold {
+        color: #c9a84c;
+        border-color: #c9a84c;
+      }
+
+      body.dark-mode .btn-outline-gold:hover {
+        background: #c9a84c;
+        color: #fff;
+      }
+
+      /* Cards */
+      .card {
+        border: none;
+        border-radius: 16px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        transition: 0.3s;
+        overflow: hidden;
+      }
+
+      .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+      }
+
+      body.dark-mode .card:hover {
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+      }
+
+      .chalet-card .card-img-top {
+        height: 200px;
+        object-fit: cover;
+      }
+
+      @media (max-width: 576px) {
+        .chalet-card .card-img-top {
+          height: 180px;
+        }
+        .card {
+          border-radius: 12px;
+        }
+      }
+
+      .section-title {
+        font-weight: 800;
+        color: var(--primary-color);
+        margin-bottom: 1.5rem;
+        position: relative;
+        font-size: 1.5rem;
+      }
+
+      body.dark-mode .section-title {
+        color: var(--dark-text);
+      }
+
+      .section-title:after {
+        content: "";
+        display: block;
+        width: 50px;
+        height: 4px;
+        background: var(--accent-color);
+        margin-top: 8px;
+      }
+
+      @media (max-width: 576px) {
+        .section-title {
+          font-size: 1.2rem;
+        }
+      }
+
+      .badge-amenity {
+        background: rgba(26, 60, 94, 0.1);
+        color: var(--primary-color);
+        padding: 4px 12px;
+        border-radius: 50px;
+        font-size: 0.75rem;
+        margin: 3px;
+        display: inline-block;
+      }
+
+      body.dark-mode .badge-amenity {
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--dark-text);
+      }
+
+      /* Footer */
+      .footer {
+        background: var(--primary-color);
+        color: white;
+        padding: 2rem 0;
+        margin-top: 3rem;
+      }
+
+      body.dark-mode .footer {
+        background: var(--dark-card);
+        border-top: 1px solid var(--dark-border);
+      }
+
+      .footer a {
+        color: rgba(255, 255, 255, 0.8);
+        text-decoration: none;
+        transition: 0.3s;
+      }
+
+      .footer a:hover {
+        color: var(--accent-color);
+      }
+
+      body.dark-mode .footer a:hover {
+        color: #c9a84c;
+      }
+
+      @media (max-width: 576px) {
+        .footer {
+          padding: 1.5rem 0;
+        }
+        .footer .col-md-4 {
+          margin-bottom: 1rem;
+        }
+      }
+
+      .category-badge {
+        background: var(--accent-color);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 50px;
+        font-size: 0.75rem;
+        display: inline-block;
+      }
+
+      .dark-mode-toggle {
+        cursor: pointer;
+        background: rgba(255, 255, 255, 0.1);
+        border: none;
+        color: white;
+        padding: 8px 12px;
+        border-radius: 50px;
+        transition: 0.3s;
+        font-size: 1rem;
+      }
+
+      .dark-mode-toggle:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
+
+      body.dark-mode .dark-mode-toggle {
+        background: rgba(255, 255, 255, 0.05);
+      }
+
+      body.dark-mode .dark-mode-toggle:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .dark-mode-toggle:active {
+        transform: scale(0.95);
+      }
+
+      /* Hero Section */
+      .hero-section {
+        background-size: cover;
+        background-position: center;
+        padding: 80px 0;
+        border-radius: 16px;
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 2rem;
+        min-height: 300px;
+        display: flex;
+        align-items: center;
+      }
+
+      .hero-section::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1;
+      }
+
+      .hero-content {
+        position: relative;
+        z-index: 2;
+        width: 100%;
+        padding: 0 15px;
+      }
+
+      .hero-title {
+        font-size: 2.5rem;
+        font-weight: 800;
+        text-shadow: 2px 2px 20px rgba(0, 0, 0, 0.5);
+      }
+
+      .hero-subtitle {
+        font-size: 1.1rem;
+        opacity: 0.9;
+      }
+
+      @media (max-width: 576px) {
+        .hero-section {
+          padding: 50px 0;
+          min-height: 220px;
+          border-radius: 12px;
+        }
+        .hero-title {
+          font-size: 1.8rem;
+        }
+        .hero-subtitle {
+          font-size: 0.9rem;
+        }
+        .hero-section .btn {
+          font-size: 0.9rem;
+          padding: 8px 20px;
+        }
+      }
+
+      /* Category Cards */
+      .category-card {
+        text-align: center;
+        padding: 20px;
+        cursor: pointer;
+        transition: 0.3s;
+        height: 100%;
+      }
+
+      .category-card:hover {
+        transform: translateY(-8px);
+      }
+
+      .category-icon {
+        font-size: 2.5rem;
+        color: var(--accent-color);
+        margin-bottom: 12px;
+      }
+
+      @media (max-width: 576px) {
+        .category-card {
+          padding: 15px;
+        }
+        .category-icon {
+          font-size: 2rem;
+        }
+      }
+
+      /* User Dropdown */
+      .user-dropdown {
+        color: white;
+        text-decoration: none;
+        padding: 6px 12px;
+        border-radius: 50px;
+        background: rgba(255, 255, 255, 0.1);
+        transition: 0.3s;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .user-dropdown:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
+
+      /* Badge Pending Animation */
+      .badge-pending {
+        animation: pulse 1.5s ease-in-out infinite;
+      }
+
+      @keyframes pulse {
+        0% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+        100% {
+          opacity: 1;
+        }
+      }
+
+      /* Responsive Utilities */
+      @media (max-width: 768px) {
+        body {
+          padding-top: 60px;
+        }
+        .navbar-brand {
+          font-size: 1rem;
+        }
+        .nav-link {
+          font-size: 0.85rem;
+          padding: 6px 10px !important;
+        }
+        .container {
+          padding-left: 12px;
+          padding-right: 12px;
+        }
+      }
+
+      @media (max-width: 576px) {
+        .btn {
+          font-size: 0.85rem;
+          padding: 8px 16px;
+        }
+        .btn-gold {
+          padding: 8px 18px;
+        }
+        .display-6 {
+          font-size: 1.5rem;
+        }
+      }
+
+      /* Loading Spinner */
+      .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid var(--accent-color);
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .hover-shadow {
+        transition: all 0.3s ease;
+        cursor: pointer;
+      }
+      .hover-shadow:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+      }
+
+      /* Touch-friendly */
+      .btn,
+      .nav-link,
+      .user-dropdown,
+      .dark-mode-toggle {
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      /* Scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--accent-color);
+        border-radius: 10px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #b8943a;
+      }
+
+      body.dark-mode ::-webkit-scrollbar-track {
+        background: var(--dark-card);
+      }
+      body.dark-mode ::-webkit-scrollbar-thumb {
+        background: #c9a84c;
+      }
+
+      /* Dark Mode transition for all elements */
+      * {
+        transition:
+          background-color 0.3s ease,
+          color 0.3s ease,
+          border-color 0.3s ease;
+      }
+
+      /* تحسين عرض المودال في الموبايل */
+      .modal-dialog {
+        margin: 0.5rem;
+      }
+
+      @media (min-width: 576px) {
+        .modal-dialog {
+          margin: 1.75rem auto;
+        }
+      }
+
+      .modal-content {
+        border-radius: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg fixed-top">
+      <div class="container">
+        <a class="navbar-brand" href="{{ url_for('index') }}">
+          <i class="bi bi-house-heart-fill"></i> شاليهك
+        </a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navbarNav"
+          aria-controls="navbarNav"
+          aria-expanded="false"
+          aria-label="تبديل القائمة"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ms-auto align-items-center">
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('index') }}">الرئيسية</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('all_chalets') }}"
+                >الشاليهات</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('categories') }}"
+                >التصنيفات</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('about') }}">عن شاليهك</a>
+            </li>
+
+            {% if session.user_id %}
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('dashboard') }}"
+                >لوحة التحكم</a
+              >
+            </li>
+
+            {% if session.role == 'admin' %}
+            <li class="nav-item dropdown">
+              <a
+                class="nav-link dropdown-toggle"
+                href="#"
+                id="adminDropdown"
+                role="button"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+              >
+                <i class="bi bi-shield-lock"></i> المدير
+              </a>
+              <ul
+                class="dropdown-menu dropdown-menu-end"
+                aria-labelledby="adminDropdown"
+              >
+                <li>
+                  <a
+                    class="dropdown-item"
+                    href="{{ url_for('admin_dashboard') }}"
+                  >
+                    <i class="bi bi-speedometer2"></i> لوحة التحكم
+                  </a>
+                </li>
+                <li><hr class="dropdown-divider" /></li>
+                <li>
+                  <a class="dropdown-item" href="{{ url_for('admin_users') }}">
+                    <i class="bi bi-people"></i> إدارة المستخدمين
+                  </a>
+                </li>
+                <li>
+                  <a
+                    class="dropdown-item"
+                    href="{{ url_for('admin_bookings') }}"
+                  >
+                    <i class="bi bi-calendar-check"></i> إدارة الحجوزات
+                  </a>
+                </li>
+                <li>
+                  <a
+                    class="dropdown-item"
+                    href="{{ url_for('admin_chalets') }}"
+                  >
+                    <i class="bi bi-building"></i> إدارة الشاليهات
+                  </a>
+                </li>
+                <li>
+                  <a
+                    class="dropdown-item"
+                    href="{{ url_for('admin_categories') }}"
+                  >
+                    <i class="bi bi-tags"></i> إدارة التصنيفات
+                  </a>
+                </li>
+              </ul>
+            </li>
+            {% endif %}
+
+            <li class="nav-item dropdown">
+              <a
+                class="nav-link user-dropdown"
+                href="#"
+                id="userDropdown"
+                role="button"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+              >
+                <i class="bi bi-person-circle"></i> {{ session.name }}
+              </a>
+              <ul
+                class="dropdown-menu dropdown-menu-end"
+                aria-labelledby="userDropdown"
+              >
+                <li>
+                  <a class="dropdown-item" href="{{ url_for('dashboard') }}"
+                    ><i class="bi bi-speedometer2"></i> لوحة التحكم</a
+                  >
+                </li>
+                <li><hr class="dropdown-divider" /></li>
+                <li>
+                  <a
+                    class="dropdown-item text-danger"
+                    href="{{ url_for('logout') }}"
+                    ><i class="bi bi-box-arrow-right"></i> تسجيل الخروج</a
+                  >
+                </li>
+              </ul>
+            </li>
+            {% else %}
+            <li class="nav-item">
+              <a
+                class="nav-link btn btn-outline-light text-white px-3 me-2"
+                href="{{ url_for('signup') }}"
+                >تسجيل</a
+              >
+            </li>
+            <li class="nav-item">
+              <a
+                class="nav-link btn btn-gold text-white px-3"
+                href="{{ url_for('login') }}"
+                >دخول</a
+              >
+            </li>
+            {% endif %}
+            <li class="nav-item">
+              <button
+                class="dark-mode-toggle"
+                id="darkModeToggle"
+                title="الوضع الليلي"
+                aria-label="تبديل الوضع الليلي"
+              >
+                <i class="bi bi-moon-fill"></i>
+              </button>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Flash Messages -->
+    <div class="container mt-3">
+      {% with messages = get_flashed_messages(with_categories=true) %} {% if
+      messages %} {% for category, message in messages %}
+      <div
+        class="alert alert-{{ category }} alert-dismissible fade show"
+        role="alert"
+      >
+        <i
+          class="bi bi-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-circle{% elif category == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %}"
+        ></i>
+        {{ message }}
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="alert"
+          aria-label="إغلاق"
+        ></button>
+      </div>
+      {% endfor %} {% endif %} {% endwith %}
+    </div>
+
+    <!-- Content -->
+    <div class="container">{% block content %}{% endblock %}</div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-4 mb-3 mb-md-0">
+            <h5><i class="bi bi-house-heart-fill"></i> شاليهك</h5>
+            <p class="small">شاليهات فاخرة في قلب العين السخنة، السويس، مصر</p>
+            <p class="small">
+              <i class="bi bi-geo-alt"></i> العين السخنة، السويس، مصر
+            </p>
+          </div>
+          <div class="col-md-4 mb-3 mb-md-0">
+            <h5>روابط سريعة</h5>
+            <ul class="list-unstyled small">
+              <li><a href="{{ url_for('all_chalets') }}">جميع الشاليهات</a></li>
+              <li><a href="{{ url_for('categories') }}">التصنيفات</a></li>
+              <li><a href="{{ url_for('about') }}">عن شاليهك</a></li>
+              <li><a href="{{ url_for('contact') }}">اتصل بنا</a></li>
+            </ul>
+          </div>
+          <div class="col-md-4">
+            <h5>اتصل بنا</h5>
+            <p class="small"><i class="bi bi-telephone"></i> +201214855535</p>
+            <p class="small"><i class="bi bi-whatsapp"></i> +201214855535</p>
+            <p class="small">
+              <i class="bi bi-envelope"></i> m0009volly@gmail.com
+            </p>
+            <div class="mt-2">
+              <a href="#" class="text-white me-2" aria-label="فيسبوك"
+                ><i class="bi bi-facebook"></i
+              ></a>
+              <a href="#" class="text-white me-2" aria-label="إنستغرام"
+                ><i class="bi bi-instagram"></i
+              ></a>
+              <a href="#" class="text-white me-2" aria-label="يوتيوب"
+                ><i class="bi bi-youtube"></i
+              ></a>
+              <a href="#" class="text-white" aria-label="واتساب"
+                ><i class="bi bi-whatsapp"></i
+              ></a>
+            </div>
+          </div>
+        </div>
+        <hr class="mt-3" />
+        <p class="text-center text-muted small">
+          © 2026 شاليهك - جميع الحقوق محفوظة
+        </p>
+      </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+            // Dark Mode Toggle
+            const darkModeToggle = document.getElementById("darkModeToggle");
+            const body = document.body;
+
+            // Check saved preference
+            if (localStorage.getItem("darkMode") === "enabled") {
+              body.classList.add("dark-mode");
+              darkModeToggle.innerHTML = '<i class="bi bi-sun-fill"></i>';
+              document.querySelector('meta[name="theme-color"]').content = "#0d1117";
+            }
+
+            darkModeToggle.addEventListener("click", () => {
+              body.classList.toggle("dark-mode");
+              if (body.classList.contains("dark-mode")) {
+                localStorage.setItem("darkMode", "enabled");
+                darkModeToggle.innerHTML = '<i class="bi bi-sun-fill"></i>';
+                document.querySelector('meta[name="theme-color"]').content =
+                  "#0d1117";
+              } else {
+                localStorage.setItem("darkMode", "disabled");
+                darkModeToggle.innerHTML = '<i class="bi bi-moon-fill"></i>';
+                document.querySelector('meta[name="theme-color"]').content =
+                  "#1a3c5e";
+              }
+            });
+
+            // Auto-hide alerts after 5 seconds
+            document.addEventListener("DOMContentLoaded", function () {
+              setTimeout(function () {
+                const alerts = document.querySelectorAll(".alert");
+                alerts.forEach(function (alert) {
+                  const closeButton = alert.querySelector(".btn-close");
+                  if (closeButton) {
+                    closeButton.click();
+                  }
+                });
+              }, 5000);
+            });
+
+            // تحسين عرض الجداول في الموبايل
+            document.querySelectorAll(".table-responsive").forEach(function (table) {
+              table.addEventListener("touchstart", function () {}, { passive: true });
+            });
+
+            // تحديث عدد الحجوزات المعلقة للمالك
+      document.addEventListener('DOMContentLoaded', function() {
+          // يمكن إضافة AJAX هنا لتحديث العدد
+          {% if session.role == 'owner' %}
+              const badge = document.getElementById('pendingBadge');
+              if (badge) {
+                  fetch('/api/pending-count')
+                      .then(response => response.json())
+                      .then(data => {
+                          if (data.count > 0) {
+                              badge.textContent = data.count;
+                              badge.style.display = 'inline';
+                          } else {
+                              badge.style.display = 'none';
+                          }
+                      })
+                      .catch(() => {});
+              }
+          {% endif %}
+      });
+    </script>
+  </body>
+</html>

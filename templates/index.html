@@ -1,0 +1,144 @@
+{% extends "base.html" %} {% block content %}
+<!-- Hero Section -->
+<section
+  class="hero-section"
+  style="background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('{{ url_for('static', filename='img/' + hero_image) }}'); background-size: cover; background-position: center;"
+>
+  <div class="container text-center text-white hero-content">
+    <h1 class="hero-title">مرحباً بكم في قرية لاسرينا</h1>
+    <p class="hero-subtitle">شاليهات فاخرة في قلب العين السخنة</p>
+    <div class="mt-4">
+      <a
+        href="{{ url_for('all_chalets') }}"
+        class="btn btn-gold btn-lg px-5 py-3"
+      >
+        <i class="bi bi-search"></i> استكشف الشاليهات
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- Categories Section -->
+<section class="mb-5">
+  <h2 class="section-title">تصنيفات الشاليهات</h2>
+  <div class="row">
+    {% for category in categories %}
+    <div class="col-md-4 mb-3">
+      <a
+        href="{{ url_for('category_chalets', category_id=category.id) }}"
+        class="text-decoration-none"
+      >
+        <div class="card category-card">
+          <img
+            src="{{ get_image_url_dynamic(category.image) }}"
+            class="card-img-top"
+            style="
+              height: 200px;
+              object-fit: cover;
+              border-radius: 20px 20px 0 0;
+            "
+            alt="{{ category.name_ar }}"
+            onerror="this.src='{{ url_for('static', filename='img/default_category.jpg') }}'"
+          />
+          <div class="card-body">
+            <div class="category-icon">
+              <i class="bi {{ category.icon }}"></i>
+            </div>
+            <h5>{{ category.name_ar }}</h5>
+            <p class="text-muted">{{ category.description }}</p>
+          </div>
+        </div>
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- Featured Chalets -->
+<section class="mb-5">
+  <h2 class="section-title">شاليهات مميزة</h2>
+  <div class="row">
+    {% for chalet in chalets %}
+    <div class="col-md-4 mb-4">
+      <div class="card chalet-card h-100">
+        <img
+          src="{{ get_image_url_dynamic(chalet.image) }}"
+          class="card-img-top"
+          alt="{{ chalet.name_ar }}"
+          onerror="this.src='{{ url_for('static', filename='img/C1.jpg') }}'"
+        />
+        <div class="card-body">
+          <h5 class="card-title">{{ chalet.name_ar }}</h5>
+          <p class="card-text text-muted">
+            <i class="bi bi-geo-alt"></i> {{ chalet.location }}
+          </p>
+          {% if chalet.category_name_ar %}
+          <span class="category-badge">{{ chalet.category_name_ar }}</span>
+          {% endif %}
+          <p class="card-text mt-2">{{ chalet.description_ar[:80] }}...</p>
+          <div class="d-flex justify-content-between align-items-center">
+            <span class="h5 text-primary"
+              >{{ chalet.price_per_night }}<small class="text-muted"
+                >/ليلة</small
+              ></span
+            >
+            <a
+              href="{{ url_for('chalet_detail', chalet_id=chalet.id) }}"
+              class="btn btn-gold"
+              >عرض</a
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="text-center mt-4">
+    <a
+      href="{{ url_for('all_chalets') }}"
+      class="btn btn-outline-gold btn-lg px-5"
+    >
+      عرض جميع الشاليهات <i class="bi bi-arrow-left"></i>
+    </a>
+  </div>
+</section>
+
+<!-- About Lasreina -->
+<section
+  class="mb-5"
+  style="
+    background: linear-gradient(
+      135deg,
+      var(--primary-color),
+      var(--secondary-color)
+    );
+    padding: 60px 0;
+    border-radius: 20px;
+    color: white;
+  "
+>
+  <div class="container text-center">
+    <h2 class="mb-3">عن قرية لاسرينا</h2>
+    <p class="mb-4" style="font-size: 1.2rem">
+      وجهة الفخامة والراحة في العين السخنة
+    </p>
+    <div class="row">
+      <div class="col-md-4">
+        <i class="bi bi-house-heart" style="font-size: 3rem"></i>
+        <h5 class="mt-2">شاليهات فاخرة</h5>
+        <p>شاليهات مصممة بأعلى معايير الجودة</p>
+      </div>
+      <div class="col-md-4">
+        <i class="bi bi-water" style="font-size: 3rem"></i>
+        <h5 class="mt-2">إطلالة على البحر</h5>
+        <p>إطلالات خلابة على البحر الأحمر</p>
+      </div>
+      <div class="col-md-4">
+        <i class="bi bi-star" style="font-size: 3rem"></i>
+        <h5 class="mt-2">خدمة فاخرة</h5>
+        <p>خدمة على مدار الساعة لتلبية احتياجاتك</p>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

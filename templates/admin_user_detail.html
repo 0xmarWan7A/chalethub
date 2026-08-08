@@ -1,0 +1,259 @@
+{% extends "base.html" %} {% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-10 col-12">
+    <div class="card">
+      <div
+        class="card-header bg-primary text-white py-2 d-flex justify-content-between align-items-center flex-wrap"
+      >
+        <h5 class="mb-0"><i class="bi bi-person"></i> تفاصيل المستخدم</h5>
+        <a href="{{ url_for('admin_users') }}" class="btn btn-light btn-sm">
+          <i class="bi bi-arrow-right"></i> رجوع
+        </a>
+      </div>
+      <div class="card-body p-3 p-md-4">
+        <div class="row g-3">
+          <div class="col-12 col-md-6">
+            <h6 class="border-bottom pb-2 small">المعلومات الشخصية</h6>
+            <p class="mb-1"><strong>الاسم:</strong> {{ user.name }}</p>
+            <p class="mb-1">
+              <strong>اسم المستخدم:</strong> {{ user.username }}
+            </p>
+            <p class="mb-1">
+              <strong>البريد الإلكتروني:</strong> {{ user.email or '-' }}
+            </p>
+            <p class="mb-1"><strong>الهاتف:</strong> {{ user.phone }}</p>
+            <p class="mb-0">
+              <strong>الرقم القومي:</strong> {{ user.national_id or '-' }}
+            </p>
+          </div>
+          <div class="col-12 col-md-6">
+            <h6 class="border-bottom pb-2 small">معلومات الحساب</h6>
+            <p class="mb-1">
+              <strong>الدور:</strong>
+              <span
+                class="badge {% if user.role == 'admin' %}bg-danger{% elif user.role == 'owner' %}bg-info{% else %}bg-secondary{% endif %}"
+              >
+                {% if user.role == 'admin' %}مدير{% elif user.role == 'owner'
+                %}مالك{% else %}عميل{% endif %}
+              </span>
+            </p>
+            <p class="mb-1">
+              <strong>الحالة:</strong>
+              <span
+                class="badge {% if user.status == 'approved' %}bg-success{% elif user.status == 'pending' %}bg-warning{% else %}bg-danger{% endif %}"
+              >
+                {% if user.status == 'approved' %}موافق{% elif user.status ==
+                'pending' %}معلق{% else %}مرفوض{% endif %}
+              </span>
+            </p>
+            <p class="mb-1">
+              <strong>تاريخ التسجيل:</strong> {{ user.created_at }}
+            </p>
+            {% if user.approved_at %}
+            <p class="mb-0">
+              <strong>تاريخ الموافقة:</strong> {{ user.approved_at }}
+            </p>
+            {% endif %}
+          </div>
+        </div>
+
+        {% if user.role == 'owner' %}
+        <hr />
+        <h6 class="border-bottom pb-2 small">تفاصيل المالك</h6>
+        <div class="row g-2">
+          <div class="col-12 col-sm-6">
+            <p class="mb-1">
+              <strong>رقم الشاليه:</strong> {{ user.chalet_number or '-' }}
+            </p>
+            <p class="mb-0">
+              <strong>اسم النشاط التجاري:</strong> {{ user.business_name or '-'
+              }}
+            </p>
+          </div>
+          <div class="col-12 col-sm-6">
+            <p class="mb-1">
+              <strong>عدد الشاليهات:</strong> {{ chalets_count }}
+            </p>
+            <p class="mb-0">
+              <strong>صورة كارنيه الشاليه:</strong>
+              {% if user.chalet_card_image %}
+              <button
+                class="btn btn-sm btn-info"
+                data-bs-toggle="modal"
+                data-bs-target="#cardModal"
+              >
+                <i class="bi bi-card-image"></i> عرض الصورة
+              </button>
+              {% else %}
+              <span class="text-muted">لا توجد صورة</span>
+              {% endif %}
+            </p>
+          </div>
+        </div>
+
+        <!-- Modal عرض كارنيه الشاليه -->
+        {% if user.chalet_card_image %}
+        <div class="modal fade" id="cardModal" tabindex="-1">
+          <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+              <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">كارنيه الشاليه - {{ user.name }}</h5>
+                <button
+                  type="button"
+                  class="btn-close btn-close-white"
+                  data-bs-dismiss="modal"
+                ></button>
+              </div>
+              <div class="modal-body text-center">
+                <img
+                  src="{{ get_image_url_dynamic(user.chalet_card_image) }}"
+                  class="img-fluid"
+                  style="max-height: 500px; border-radius: 10px"
+                  onerror="this.src='{{ url_for('static', filename='img/default_image.jpg') }}'"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- عرض صورة الرقم القومي للمالك -->
+        {% if user.national_id_image %}
+        <div class="mt-2">
+          <p>
+            <strong>صورة الرقم القومي:</strong>
+            <button
+              class="btn btn-sm btn-primary"
+              data-bs-toggle="modal"
+              data-bs-target="#nationalIdModal"
+            >
+              <i class="bi bi-card-image"></i> عرض الصورة
+            </button>
+          </p>
+        </div>
+
+        <!-- Modal عرض الرقم القومي -->
+        <div class="modal fade" id="nationalIdModal" tabindex="-1">
+          <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+              <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">الرقم القومي - {{ user.name }}</h5>
+                <button
+                  type="button"
+                  class="btn-close btn-close-white"
+                  data-bs-dismiss="modal"
+                ></button>
+              </div>
+              <div class="modal-body text-center">
+                <img
+                  src="{{ get_image_url_dynamic(user.national_id_image) }}"
+                  class="img-fluid"
+                  style="max-height: 500px; border-radius: 10px"
+                  onerror="this.src='{{ url_for('static', filename='img/default_avatar.jpg') }}'"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %} {% endif %} {% if user.role == 'customer' %}
+        <hr />
+        <h6 class="border-bottom pb-2 small">تفاصيل العميل</h6>
+        <div class="row g-2">
+          <div class="col-12 col-sm-6">
+            <p class="mb-1">
+              <strong>تاريخ الميلاد:</strong> {{ user.date_of_birth or '-' }}
+            </p>
+            <p class="mb-0">
+              <strong>العنوان:</strong> {{ user.address or '-' }}
+            </p>
+          </div>
+          <div class="col-12 col-sm-6">
+            <p class="mb-0">
+              <strong>جهة اتصال طارئة:</strong> {{ user.emergency_contact or '-'
+              }}
+            </p>
+          </div>
+        </div>
+
+        <!-- عرض صورة الرقم القومي للعميل -->
+        {% if user.national_id_image %}
+        <div class="mt-2">
+          <p>
+            <strong>صورة الرقم القومي:</strong>
+            <button
+              class="btn btn-sm btn-primary"
+              data-bs-toggle="modal"
+              data-bs-target="#nationalIdModal"
+            >
+              <i class="bi bi-card-image"></i> عرض الصورة
+            </button>
+          </p>
+        </div>
+
+        <!-- Modal عرض الرقم القومي -->
+        <div class="modal fade" id="nationalIdModal" tabindex="-1">
+          <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+              <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">الرقم القومي - {{ user.name }}</h5>
+                <button
+                  type="button"
+                  class="btn-close btn-close-white"
+                  data-bs-dismiss="modal"
+                ></button>
+              </div>
+              <div class="modal-body text-center">
+                <img
+                  src="{{ get_image_url_dynamic(user.national_id_image) }}"
+                  class="img-fluid"
+                  style="max-height: 500px; border-radius: 10px"
+                  onerror="this.src='{{ url_for('static', filename='img/default_avatar.jpg') }}'"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %} {% endif %}
+
+        <hr />
+        <div class="d-flex flex-wrap gap-2 mt-3">
+          {% if user.id != session.user_id %}
+          <a
+            href="{{ url_for('admin_user_edit', user_id=user.id) }}"
+            class="btn btn-warning btn-sm"
+          >
+            <i class="bi bi-pencil"></i> تعديل
+          </a>
+          {% if user.role != 'admin' %}
+          <a
+            href="{{ url_for('admin_user_upgrade', user_id=user.id) }}"
+            class="btn btn-primary btn-sm"
+          >
+            <i class="bi bi-arrow-up-circle"></i> ترقية الصلاحيات
+          </a>
+          <a
+            href="{{ url_for('admin_user_delete', user_id=user.id) }}"
+            class="btn btn-danger btn-sm"
+            onclick="return confirm('هل أنت متأكد من حذف هذا المستخدم؟');"
+          >
+            <i class="bi bi-trash"></i> حذف
+          </a>
+          {% endif %} {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  @media (max-width: 576px) {
+    .card-body {
+      padding: 1rem !important;
+    }
+    .btn-sm {
+      font-size: 0.75rem;
+      padding: 0.3rem 0.6rem;
+    }
+  }
+</style>
+{% endblock %}

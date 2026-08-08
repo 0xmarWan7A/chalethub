@@ -1,0 +1,251 @@
+{% extends "base.html" %} {% block content %}
+<div class="row">
+  <div class="col-md-6">
+    <!-- عرض الصور الرئيسية -->
+    {% if chalet.images and chalet.images|length > 0 %}
+    <div id="chaletCarousel" class="carousel slide" data-bs-ride="carousel">
+      <div class="carousel-indicators">
+        {% for img in chalet.images %}
+        <button
+          type="button"
+          data-bs-target="#chaletCarousel"
+          data-bs-slide-to="{{ loop.index0 }}"
+          {%
+          if
+          loop.first
+          %}class="active"
+          {%
+          endif
+          %}
+          aria-label="Slide {{ loop.index0 }}"
+        ></button>
+        {% endfor %}
+      </div>
+      <div class="carousel-inner">
+        {% for img in chalet.images %}
+        <div class="carousel-item {% if loop.first %}active{% endif %}">
+          <img
+            src="{{ get_image_url_dynamic(img.image) }}"
+            class="d-block w-100"
+            style="height: 400px; object-fit: cover; border-radius: 15px"
+            alt="{{ chalet.name_ar }}"
+            onerror="this.src='{{ url_for('static', filename='img/C1.jpg') }}'"
+          />
+          {% if img.is_main == 1 %}
+          <div
+            class="carousel-caption d-none d-md-block"
+            style="
+              background: rgba(0, 0, 0, 0.5);
+              border-radius: 10px;
+              padding: 5px 15px;
+            "
+          >
+            <small
+              ><i class="bi bi-star-fill text-warning"></i> الصورة
+              الرئيسية</small
+            >
+          </div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% if chalet.images|length > 1 %}
+      <button
+        class="carousel-control-prev"
+        type="button"
+        data-bs-target="#chaletCarousel"
+        data-bs-slide="prev"
+      >
+        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">السابق</span>
+      </button>
+      <button
+        class="carousel-control-next"
+        type="button"
+        data-bs-target="#chaletCarousel"
+        data-bs-slide="next"
+      >
+        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">التالي</span>
+      </button>
+      {% endif %}
+    </div>
+    {% else %}
+    <img
+      src="{{ url_for('static', filename='img/C1.jpg') }}"
+      class="img-fluid rounded"
+      style="height: 400px; width: 100%; object-fit: cover; border-radius: 15px"
+      alt="{{ chalet.name_ar }}"
+    />
+    {% endif %}
+
+    <!-- عرض الصور المصغرة -->
+    {% if chalet.images and chalet.images|length > 1 %}
+    <div class="row g-2 mt-2">
+      {% for img in chalet.images %}
+      <div class="col-3">
+        <img
+          src="{{ get_image_url_dynamic(img.image) }}"
+          class="img-fluid rounded"
+          style="height: 80px; width: 100%; object-fit: cover; cursor: pointer"
+          alt="{{ chalet.name_ar }}"
+          data-slide-to="{{ loop.index0 }}"
+          onclick="goToSlide({{ loop.index0 }})"
+          onerror="this.src='{{ url_for('static', filename='img/C1.jpg') }}'"
+        />
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body">
+        <h1 class="display-5">{{ chalet.name_ar }}</h1>
+        <p class="text-muted">
+          <i class="bi bi-geo-alt"></i> {{ chalet.location }}
+        </p>
+
+        {% if chalet.category_name_ar %}
+        <span class="category-badge">{{ chalet.category_name_ar }}</span>
+        {% endif %}
+
+        <p class="mt-3">{{ chalet.description_ar }}</p>
+
+        <div class="mb-3">
+          <span class="badge bg-primary me-2"
+            ><i class="bi bi-bed"></i> {{ chalet.bedrooms }} غرف</span
+          >
+          <span class="badge bg-primary me-2"
+            ><i class="bi bi-droplet"></i> {{ chalet.bathrooms }} حمامات</span
+          >
+          <span class="badge bg-primary"
+            ><i class="bi bi-people"></i> {{ chalet.max_guests }} ضيوف</span
+          >
+        </div>
+
+        <div class="mb-3">
+          <h6>المرافق:</h6>
+          {% for amenity in chalet.amenities %}
+          <span class="badge-amenity">{{ amenity }}</span>
+          {% endfor %}
+        </div>
+
+        <h3 class="text-primary">
+          {{ chalet.price_per_night }}
+          <small class="text-muted fs-6">ج.م / ليلة</small>
+        </h3>
+
+        <!-- Owner Info -->
+        <div class="card mt-3 bg-light">
+          <div class="card-body">
+            <h6><i class="bi bi-person"></i> معلومات المالك</h6>
+            <p class="mb-1"><strong>الاسم:</strong> {{ chalet.owner_name }}</p>
+            <p class="mb-0">
+              <strong>الهاتف:</strong> {{ chalet.owner_phone }}
+            </p>
+          </div>
+        </div>
+
+        {% if session.user_id and session.role == 'customer' %}
+        <a
+          href="{{ url_for('book_chalet', chalet_id=chalet.id) }}"
+          class="btn btn-gold btn-lg mt-3 w-100"
+        >
+          <i class="bi bi-calendar-check"></i> احجز الآن
+        </a>
+        {% elif session.user_id and session.role == 'owner' and chalet.owner_id
+        == session.user_id %}
+        <div class="mt-3">
+          <a
+            href="{{ url_for('owner_chalet_images', chalet_id=chalet.id) }}"
+            class="btn btn-info w-100 mb-2"
+          >
+            <i class="bi bi-images"></i> إدارة الصور
+          </a>
+          <a
+            href="{{ url_for('owner_chalet_dates', chalet_id=chalet.id) }}"
+            class="btn btn-warning w-100"
+          >
+            <i class="bi bi-calendar"></i> إدارة التواريخ المحجوزة
+          </a>
+        </div>
+        {% elif session.user_id %}
+        <p class="text-muted mt-3">العملاء فقط يمكنهم الحجز</p>
+        {% else %}
+        <a href="{{ url_for('login') }}" class="btn btn-gold btn-lg mt-3 w-100"
+          >سجل الدخول للحجز</a
+        >
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Calendar for availability -->
+<div class="card mt-4">
+  <div class="card-header bg-primary text-white">
+    <h5 class="mb-0"><i class="bi bi-calendar3"></i> التوفر</h5>
+  </div>
+  <div class="card-body">
+    <div id="calendar"></div>
+    <p class="text-muted small mt-2">
+      <span class="badge bg-danger">محجوز</span>
+      <span class="badge bg-success">متاح</span>
+    </p>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/index.global.min.js"></script>
+<script>
+  // دالة للانتقال إلى شريحة معينة في Carousel
+  function goToSlide(index) {
+    var carousel = document.querySelector("#chaletCarousel");
+    if (carousel) {
+      var bsCarousel = bootstrap.Carousel.getInstance(carousel);
+      if (bsCarousel) {
+        bsCarousel.to(index);
+      } else {
+        // إذا لم يتم تهيئة Carousel بعد
+        var newCarousel = new bootstrap.Carousel(carousel);
+        newCarousel.to(index);
+      }
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    // تهيئة FullCalendar
+    var calendarEl = document.getElementById("calendar");
+    if (calendarEl) {
+      var calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: "dayGridMonth",
+        locale: "ar",
+        headerToolbar: {
+          left: "prev,next today",
+          center: "title",
+          right: "dayGridMonth,dayGridWeek",
+        },
+        events: function (info, successCallback, failureCallback) {
+          fetch('{{ url_for("get_booked_dates", chalet_id=chalet.id) }}')
+            .then((response) => response.json())
+            .then((data) => {
+              var events = data.dates.map((date) => ({
+                title: "محجوز",
+                start: date,
+                allDay: true,
+                backgroundColor: "#dc3545",
+                borderColor: "#dc3545",
+              }));
+              successCallback(events);
+            })
+            .catch((error) => {
+              console.error("Error fetching booked dates:", error);
+              failureCallback(error);
+            });
+        },
+      });
+      calendar.render();
+    }
+  });
+</script>
+{% endblock %}

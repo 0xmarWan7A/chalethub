@@ -1,0 +1,130 @@
+<!-- templates/upgrade_user.html -->
+{% extends "base.html" %} {% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header bg-warning text-dark">
+        <h4 class="mb-0">
+          <i class="bi bi-arrow-up-circle"></i> Upgrade/Downgrade User Role
+        </h4>
+      </div>
+      <div class="card-body">
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle"></i>
+          <strong>Current User:</strong> {{ user.name }} ({{ user.username }})
+          <br />
+          <strong>Current Role:</strong>
+          <span class="badge bg-info">{{ user.role }}</span>
+          <br />
+          <strong>Status:</strong>
+          <span
+            class="badge {%- if user.status == 'approved' -%}bg-success {%- elif user.status == 'pending' -%}bg-warning {%- else -%}bg-danger {%- endif -%}"
+          >
+            {{ user.status }}
+          </span>
+        </div>
+
+        <!-- Booking Statistics -->
+        <div class="row mb-4">
+          <div class="col-md-4">
+            <div class="card bg-light">
+              <div class="card-body text-center">
+                <h6>Total Bookings</h6>
+                <h3>{{ booking_stats.total }}</h3>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card bg-light">
+              <div class="card-body text-center">
+                <h6>As Customer</h6>
+                <h3>{{ booking_stats.customer_bookings }}</h3>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card bg-light">
+              <div class="card-body text-center">
+                <h6>As Owner</h6>
+                <h3>{{ booking_stats.owner_bookings }}</h3>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <form method="POST">
+          <div class="mb-3">
+            <label class="form-label">Select New Role</label>
+            <select name="new_role" class="form-select form-select-lg">
+              {% if user.role == 'customer' %}
+              <option value="customer" selected>
+                👤 Customer - Can book chalets
+              </option>
+              {% else %}
+              <option value="customer">👤 Customer - Can book chalets</option>
+              {% endif %} {% if user.role == 'owner' %}
+              <option value="owner" selected>
+                🏠 Owner - Can list and manage chalets
+              </option>
+              {% else %}
+              <option value="owner">
+                🏠 Owner - Can list and manage chalets
+              </option>
+              {% endif %} {% if user.role == 'admin' %}
+              <option value="admin" selected>
+                🔒 Admin - Full system access
+              </option>
+              {% else %}
+              <option value="admin">🔒 Admin - Full system access</option>
+              {% endif %}
+            </select>
+          </div>
+
+          <!-- Warning Messages -->
+          {% if user.role == 'admin' %}
+          <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <strong>Warning:</strong> You are downgrading an admin user. This
+            may remove their administrative privileges.
+          </div>
+          {% endif %} {% if user.role == 'owner' and user.chalet_count > 0 %}
+          <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <strong>Warning:</strong> This user has {{ user.chalet_count }}
+            chalet(s). If downgraded from owner, all their chalets will be
+            deleted.
+          </div>
+          {% endif %}
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-warning">
+              <i class="bi bi-arrow-up-circle"></i> Update Role
+            </button>
+            <a href="{{ url_for('admin_users') }}" class="btn btn-secondary">
+              <i class="bi bi-x-circle"></i> Cancel
+            </a>
+          </div>
+        </form>
+
+        <div class="mt-3">
+          <h6>Role Information:</h6>
+          <ul class="list-unstyled">
+            <li>
+              <span class="badge bg-secondary">Customer</span> - Can browse and
+              book chalets
+            </li>
+            <li>
+              <span class="badge bg-info">Owner</span> - Can list chalets and
+              manage bookings
+            </li>
+            <li>
+              <span class="badge bg-danger">Admin</span> - Full system
+              management
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

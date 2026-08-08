@@ -1,0 +1,103 @@
+<!-- templates/add_chalet.html -->
+{% extends "base.html" %} {% block content %}
+<h1 class="mb-4">Add New Chalet</h1>
+<div class="row">
+  <div class="col-md-8">
+    <form method="POST" enctype="multipart/form-data">
+      <div class="mb-3">
+        <label class="form-label">Chalet Name *</label>
+        <input type="text" name="name" class="form-control" required />
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Description *</label>
+        <textarea
+          name="description"
+          class="form-control"
+          rows="3"
+          required
+        ></textarea>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Price per Night (ج.م) *</label>
+        <input
+          type="number"
+          name="price"
+          class="form-control"
+          required
+          min="1"
+        />
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Location</label>
+        <input type="text" name="location" class="form-control" value="Egypt" />
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Owner *</label>
+        <select name="owner_id" class="form-select" required>
+          <option value="">Select owner</option>
+          {% for owner in owners %}
+          <option value="{{ owner.id }}">
+            {{ owner.name }} ({{ owner.username }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="row">
+        <div class="col-md-4 mb-3">
+          <label class="form-label">Bedrooms</label>
+          <input
+            type="number"
+            name="bedrooms"
+            class="form-control"
+            value="2"
+            min="1"
+          />
+        </div>
+        <div class="col-md-4 mb-3">
+          <label class="form-label">Bathrooms</label>
+          <input
+            type="number"
+            name="bathrooms"
+            class="form-control"
+            value="2"
+            min="1"
+          />
+        </div>
+        <div class="col-md-4 mb-3">
+          <label class="form-label">Max Guests</label>
+          <input
+            type="number"
+            name="max_guests"
+            class="form-control"
+            value="6"
+            min="1"
+          />
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Chalet Image</label>
+        <input type="file" name="image" class="form-control" accept="image/*" />
+        <small class="text-muted"
+          >Upload a custom image for this chalet (optional)</small
+        >
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Amenities (comma separated)</label>
+        <input
+          type="text"
+          name="amenities"
+          class="form-control"
+          value="Pool, WiFi, AC"
+          placeholder="Pool, WiFi, AC"
+        />
+      </div>
+      <button type="submit" class="btn btn-success">
+        <i class="bi bi-plus-circle"></i> Add Chalet
+      </button>
+      <a href="{{ url_for('admin_chalets') }}" class="btn btn-secondary"
+        >Cancel</a
+      >
+    </form>
+  </div>
+</div>
+{% endblock %}

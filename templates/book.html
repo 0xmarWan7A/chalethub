@@ -1,0 +1,81 @@
+{% extends "base.html" %} {% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header bg-success text-white">
+        <h4 class="mb-0">
+          <i class="bi bi-calendar-check"></i> حجز: {{ chalet.name_ar }}
+        </h4>
+      </div>
+      <div class="card-body">
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle"></i> السعر لكل ليلة:
+          <strong>{{ chalet.price_per_night }} ج.م</strong>
+        </div>
+
+        <div class="alert alert-warning">
+          <i class="bi bi-clock-history"></i>
+          <strong>تنبيه مهم:</strong> سيتم إرسال طلب الحجز إلى المالك للموافقة
+          عليه. سيتم تأكيد الحجز بعد موافقة المالك.
+        </div>
+
+        <form method="POST">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="start_date" class="form-label">تاريخ الوصول</label>
+              <input
+                type="date"
+                class="form-control"
+                id="start_date"
+                name="start_date"
+                required
+              />
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="end_date" class="form-label">تاريخ المغادرة</label>
+              <input
+                type="date"
+                class="form-control"
+                id="end_date"
+                name="end_date"
+                required
+              />
+            </div>
+          </div>
+
+          <div class="alert alert-success">
+            <i class="bi bi-check-circle"></i>
+            <strong>طريقة الدفع:</strong> سيتم التواصل معك بعد موافقة المالك
+            لتأكيد الحجز وترتيب طريقة الدفع
+          </div>
+
+          <button type="submit" class="btn btn-success w-100 py-3">
+            <i class="bi bi-send"></i> إرسال طلب الحجز
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // تعيين الحد الأدنى للتاريخ إلى اليوم
+  document.addEventListener("DOMContentLoaded", function () {
+    const today = new Date().toISOString().split("T")[0];
+    document.getElementById("start_date").min = today;
+    document.getElementById("end_date").min = today;
+
+    document
+      .getElementById("start_date")
+      .addEventListener("change", function () {
+        document.getElementById("end_date").min = this.value;
+        if (
+          document.getElementById("end_date").value &&
+          document.getElementById("end_date").value < this.value
+        ) {
+          document.getElementById("end_date").value = "";
+        }
+      });
+  });
+</script>
+{% endblock %}

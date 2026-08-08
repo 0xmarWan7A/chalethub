@@ -1,0 +1,269 @@
+{% extends "base.html" %} {% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap mb-4">
+  <h1 class="h2 mb-2">إدارة المستخدمين</h1>
+  <div class="d-flex flex-wrap gap-1">
+    <span class="badge bg-primary">إجمالي: {{ stats.total }}</span>
+    <span class="badge bg-warning">معلق: {{ stats.pending }}</span>
+    <span class="badge bg-success">موافق: {{ stats.approved }}</span>
+    <span class="badge bg-danger">مرفوض: {{ stats.rejected }}</span>
+  </div>
+</div>
+
+<!-- إحصائيات سريعة -->
+<div class="row g-2 g-md-3 mb-4">
+  <div class="col-6 col-sm-3">
+    <a
+      href="{{ url_for('admin_users', filter='all') }}"
+      class="text-decoration-none"
+    >
+      <div
+        class="card text-white bg-primary {% if filter_type == 'all' %}border border-white border-3{% endif %}"
+      >
+        <div class="card-body p-2 p-md-3 text-center">
+          <h6 class="mb-0 small">الإجمالي</h6>
+          <h3 class="mb-0">{{ stats.total }}</h3>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-sm-3">
+    <a
+      href="{{ url_for('admin_users', filter='pending') }}"
+      class="text-decoration-none"
+    >
+      <div
+        class="card text-white bg-warning {% if filter_type == 'pending' %}border border-white border-3{% endif %}"
+      >
+        <div class="card-body p-2 p-md-3 text-center">
+          <h6 class="mb-0 small">معلق</h6>
+          <h3 class="mb-0">{{ stats.pending }}</h3>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-sm-3">
+    <a
+      href="{{ url_for('admin_users', filter='approved') }}"
+      class="text-decoration-none"
+    >
+      <div
+        class="card text-white bg-success {% if filter_type == 'approved' %}border border-white border-3{% endif %}"
+      >
+        <div class="card-body p-2 p-md-3 text-center">
+          <h6 class="mb-0 small">موافق</h6>
+          <h3 class="mb-0">{{ stats.approved }}</h3>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-sm-3">
+    <a
+      href="{{ url_for('admin_users', filter='rejected') }}"
+      class="text-decoration-none"
+    >
+      <div
+        class="card text-white bg-danger {% if filter_type == 'rejected' %}border border-white border-3{% endif %}"
+      >
+        <div class="card-body p-2 p-md-3 text-center">
+          <h6 class="mb-0 small">مرفوض</h6>
+          <h3 class="mb-0">{{ stats.rejected }}</h3>
+        </div>
+      </div>
+    </a>
+  </div>
+</div>
+
+<!-- أزرار التصفية -->
+<div class="btn-group btn-group-sm mb-3 flex-wrap" role="group">
+  <a
+    href="{{ url_for('admin_users', filter='all') }}"
+    class="btn {% if filter_type == 'all' %}btn-primary active{% else %}btn-outline-primary{% endif %}"
+    >الكل</a
+  >
+  <a
+    href="{{ url_for('admin_users', filter='pending') }}"
+    class="btn {% if filter_type == 'pending' %}btn-warning active{% else %}btn-outline-warning{% endif %}"
+    >المعلقين</a
+  >
+  <a
+    href="{{ url_for('admin_users', filter='approved') }}"
+    class="btn {% if filter_type == 'approved' %}btn-success active{% else %}btn-outline-success{% endif %}"
+    >الموافقين</a
+  >
+  <a
+    href="{{ url_for('admin_users', filter='rejected') }}"
+    class="btn {% if filter_type == 'rejected' %}btn-danger active{% else %}btn-outline-danger{% endif %}"
+    >المرفوضين</a
+  >
+</div>
+
+<div class="card">
+  <div class="card-body p-2 p-md-3">
+    <!-- بحث -->
+    <div class="mb-3">
+      <input
+        type="text"
+        id="searchInput"
+        class="form-control form-control-sm"
+        placeholder="🔍 بحث عن مستخدم..."
+      />
+    </div>
+
+    <div class="table-responsive">
+      <table
+        class="table table-striped table-hover table-sm mb-0"
+        id="usersTable"
+      >
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>الاسم</th>
+            <th class="d-none d-sm-table-cell">اسم المستخدم</th>
+            <th class="d-none d-md-table-cell">الدور</th>
+            <th class="d-none d-lg-table-cell">الهاتف</th>
+            <th>الحالة</th>
+            <th>الإجراءات</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for user in users %}
+          <tr>
+            <td>{{ user.id }}</td>
+            <td>
+              <a
+                href="{{ url_for('admin_user_detail', user_id=user.id) }}"
+                class="text-decoration-none small"
+              >
+                {{ user.name }}
+              </a>
+              {% if user.national_id_image %}
+              <i
+                class="bi bi-card-image text-primary"
+                title="توجد صورة للرقم القومي"
+              ></i>
+              {% endif %} {% if user.role == 'owner' and user.chalet_card_image
+              %}
+              <i
+                class="bi bi-card-image text-success"
+                title="توجد صورة للكارنيه"
+              ></i>
+              {% endif %}
+            </td>
+            <td class="d-none d-sm-table-cell small">{{ user.username }}</td>
+            <td class="d-none d-md-table-cell">
+              <span
+                class="badge {% if user.role == 'admin' %}bg-danger{% elif user.role == 'owner' %}bg-info{% else %}bg-secondary{% endif %}"
+              >
+                {% if user.role == 'admin' %}مدير{% elif user.role == 'owner'
+                %}مالك{% else %}عميل{% endif %}
+              </span>
+            </td>
+            <td class="d-none d-lg-table-cell small">{{ user.phone }}</td>
+            <td>
+              <span
+                class="badge {% if user.status == 'approved' %}bg-success{% elif user.status == 'pending' %}bg-warning{% else %}bg-danger{% endif %}"
+              >
+                {% if user.status == 'approved' %}موافق{% elif user.status ==
+                'pending' %}معلق{% else %}مرفوض{% endif %}
+              </span>
+            </td>
+            <td>
+              <div class="btn-group btn-group-sm" role="group">
+                <a
+                  href="{{ url_for('admin_user_detail', user_id=user.id) }}"
+                  class="btn btn-info"
+                  title="عرض التفاصيل"
+                >
+                  <i class="bi bi-eye"></i>
+                </a>
+                {% if user.id != session.user_id or user.role != 'admin' %}
+                <a
+                  href="{{ url_for('admin_user_edit', user_id=user.id) }}"
+                  class="btn btn-warning"
+                  title="تعديل"
+                >
+                  <i class="bi bi-pencil"></i>
+                </a>
+                {% endif %} {% if user.status == 'approved' and user.role !=
+                'admin' %}
+                <a
+                  href="{{ url_for('admin_user_upgrade', user_id=user.id) }}"
+                  class="btn btn-primary"
+                  title="ترقية الصلاحيات"
+                >
+                  <i class="bi bi-arrow-up-circle"></i>
+                </a>
+                {% endif %} {% if user.status == 'pending' %}
+                <a
+                  href="{{ url_for('admin_approve_user', user_id=user.id) }}"
+                  class="btn btn-success"
+                  title="موافقة"
+                >
+                  <i class="bi bi-check-circle"></i>
+                </a>
+                <a
+                  href="{{ url_for('admin_reject_user', user_id=user.id) }}"
+                  class="btn btn-danger"
+                  title="رفض"
+                  onclick="return confirm('هل أنت متأكد من رفض هذا المستخدم؟');"
+                >
+                  <i class="bi bi-x-circle"></i>
+                </a>
+                {% endif %} {% if user.id != session.user_id and user.role !=
+                'admin' %}
+                <a
+                  href="{{ url_for('admin_user_delete', user_id=user.id) }}"
+                  class="btn btn-danger"
+                  title="حذف"
+                  onclick="return confirm('هل أنت متأكد من حذف هذا المستخدم؟');"
+                >
+                  <i class="bi bi-trash"></i>
+                </a>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  // بحث في الجدول
+  document.addEventListener("DOMContentLoaded", function () {
+    const searchInput = document.getElementById("searchInput");
+    const table = document.getElementById("usersTable");
+
+    searchInput.addEventListener("keyup", function () {
+      const filter = this.value.toLowerCase();
+      const rows = table
+        .getElementsByTagName("tbody")[0]
+        .getElementsByTagName("tr");
+
+      for (let row of rows) {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(filter) ? "" : "none";
+      }
+    });
+  });
+</script>
+
+<style>
+  @media (max-width: 576px) {
+    .card-body {
+      padding: 0.5rem !important;
+    }
+    .btn-group-sm .btn {
+      font-size: 0.6rem;
+      padding: 0.1rem 0.25rem;
+    }
+    .table-sm td,
+    .table-sm th {
+      padding: 0.2rem 0.2rem;
+      font-size: 0.65rem;
+    }
+  }
+</style>
+{% endblock %}

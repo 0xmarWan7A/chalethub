@@ -1,0 +1,33 @@
+{% extends "base.html" %} {% block content %}
+<h1 class="section-title">تصنيفات الشاليهات</h1>
+<div class="row">
+  {% for category in categories %}
+  <div class="col-md-4 mb-4">
+    <a
+      href="{{ url_for('category_chalets', category_id=category.id) }}"
+      class="text-decoration-none"
+    >
+      <div class="card category-card">
+        <img
+          src="{{ get_image_url_dynamic(category.image) }}"
+          class="card-img-top"
+          style="height: 200px; object-fit: cover; border-radius: 20px 20px 0 0"
+          alt="{{ category.name_ar }}"
+          onerror="this.src='{{ url_for('static', filename='img/default_category.jpg') }}'"
+        />
+        <div class="card-body text-center">
+          <div
+            class="category-icon"
+            style="font-size: 2rem; color: var(--accent-color)"
+          >
+            <i class="bi {{ category.icon }}"></i>
+          </div>
+          <h5>{{ category.name_ar }}</h5>
+          <p class="text-muted">{{ category.description }}</p>
+        </div>
+      </div>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

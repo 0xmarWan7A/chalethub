@@ -1,0 +1,117 @@
+<!-- templates/edit_chalet.html -->
+{% extends "base.html" %} {% block content %}
+<h1 class="mb-4">Edit Chalet: {{ chalet.name }}</h1>
+<div class="row">
+  <div class="col-md-8">
+    <form method="POST" enctype="multipart/form-data">
+      <div class="mb-3">
+        <label class="form-label">Chalet Name *</label>
+        <input
+          type="text"
+          name="name"
+          class="form-control"
+          value="{{ chalet.name }}"
+          required
+        />
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Description *</label>
+        <textarea name="description" class="form-control" rows="3" required>
+{{ chalet.description }}</textarea
+        >
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Price per Night (ج.م) *</label>
+        <input
+          type="number"
+          name="price"
+          class="form-control"
+          value="{{ chalet.price_per_night }}"
+          required
+          min="1"
+        />
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Location</label>
+        <input
+          type="text"
+          name="location"
+          class="form-control"
+          value="{{ chalet.location }}"
+        />
+      </div>
+      <div class="row">
+        <div class="col-md-4 mb-3">
+          <label class="form-label">Bedrooms</label>
+          <input
+            type="number"
+            name="bedrooms"
+            class="form-control"
+            value="{{ chalet.bedrooms }}"
+            min="1"
+          />
+        </div>
+        <div class="col-md-4 mb-3">
+          <label class="form-label">Bathrooms</label>
+          <input
+            type="number"
+            name="bathrooms"
+            class="form-control"
+            value="{{ chalet.bathrooms }}"
+            min="1"
+          />
+        </div>
+        <div class="col-md-4 mb-3">
+          <label class="form-label">Max Guests</label>
+          <input
+            type="number"
+            name="max_guests"
+            class="form-control"
+            value="{{ chalet.max_guests }}"
+            min="1"
+          />
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Current Image</label>
+        <div class="mb-2">
+          {% if chalet.image.startswith('C') %}
+          <img
+            src="{{ url_for('static', filename='img/' + chalet.image) }}"
+            style="max-height: 150px; border-radius: 10px"
+            onerror="this.src='{{ url_for('static', filename='img/C1.jpg') }}'"
+          />
+          {% else %}
+          <img
+            src="{{ url_for('uploaded_file', filename=chalet.image) }}"
+            style="max-height: 150px; border-radius: 10px"
+            onerror="this.src='{{ url_for('static', filename='img/C1.jpg') }}'"
+          />
+          {% endif %}
+        </div>
+        <input type="file" name="image" class="form-control" accept="image/*" />
+        <small class="text-muted"
+          >Upload a new image to replace the current one (optional)</small
+        >
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Amenities (comma separated)</label>
+        <input
+          type="text"
+          name="amenities"
+          class="form-control"
+          value="{{ chalet.amenities|join(', ') }}"
+          placeholder="Pool, WiFi, AC"
+        />
+        <small class="text-muted">Example: Pool, WiFi, AC, Kitchen</small>
+      </div>
+      <button type="submit" class="btn btn-success">
+        <i class="bi bi-save"></i> Update Chalet
+      </button>
+      <a href="{{ url_for('admin_chalets') }}" class="btn btn-secondary"
+        >Cancel</a
+      >
+    </form>
+  </div>
+</div>
+{% endblock %}

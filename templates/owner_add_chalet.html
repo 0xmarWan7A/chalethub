@@ -1,0 +1,250 @@
+{% extends "base.html" %} {% block content %}
+<h1 class="mb-4">إضافة شاليه جديد</h1>
+<div class="row">
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-body">
+        <form method="POST" enctype="multipart/form-data">
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> سيتم إرسال طلبك للمراجعة قبل النشر
+          </div>
+
+          <h5 class="border-bottom pb-2">المعلومات الأساسية</h5>
+
+          <div class="mb-3">
+            <label class="form-label">اسم الشاليه (عربي) *</label>
+            <input type="text" name="name_ar" class="form-control" required />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">اسم الشاليه (إنجليزي)</label>
+            <input type="text" name="name_en" class="form-control" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">الوصف (عربي) *</label>
+            <textarea
+              name="description_ar"
+              class="form-control"
+              rows="3"
+              required
+            ></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">الوصف (إنجليزي)</label>
+            <textarea
+              name="description_en"
+              class="form-control"
+              rows="3"
+            ></textarea>
+          </div>
+
+          <h5 class="border-bottom pb-2 mt-4">التصنيف والسعر</h5>
+
+          <div class="mb-3">
+            <label class="form-label">التصنيف *</label>
+            <select name="category_id" class="form-select" required>
+              <option value="">اختر التصنيف</option>
+              {% for cat in categories %}
+              <option value="{{ cat.id }}">{{ cat.name_ar }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">السعر لكل ليلة (ج.م) *</label>
+            <input
+              type="number"
+              name="price"
+              class="form-control"
+              required
+              min="1"
+            />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">الموقع</label>
+            <input
+              type="text"
+              name="location"
+              class="form-control"
+              value="العين السخنة، السويس، مصر"
+            />
+          </div>
+
+          <h5 class="border-bottom pb-2 mt-4">المواصفات</h5>
+
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <label class="form-label">عدد الغرف</label>
+              <input
+                type="number"
+                name="bedrooms"
+                class="form-control"
+                value="2"
+                min="1"
+              />
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">عدد الحمامات</label>
+              <input
+                type="number"
+                name="bathrooms"
+                class="form-control"
+                value="2"
+                min="1"
+              />
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">الحد الأقصى للضيوف</label>
+              <input
+                type="number"
+                name="max_guests"
+                class="form-control"
+                value="6"
+                min="1"
+              />
+            </div>
+          </div>
+
+          <!-- أضف هذا القسم بدلاً من حقل رفع الصورة القديم -->
+          <div class="mb-3">
+            <label class="form-label">صورة الشاليه</label>
+            <div
+              class="upload-area"
+              id="chaletUploadArea"
+              style="
+                border: 2px dashed #ccc;
+                border-radius: 10px;
+                padding: 30px;
+                text-align: center;
+                cursor: pointer;
+                transition: 0.3s;
+              "
+            >
+              <i
+                class="bi bi-cloud-upload"
+                style="font-size: 3rem; color: #ccc"
+              ></i>
+              <p class="mt-2">اسحب الصورة هنا أو انقر للاختيار</p>
+              <input
+                type="file"
+                name="image"
+                id="chaletImageInput"
+                accept="image/*"
+                style="display: none"
+              />
+              <div
+                id="chaletImagePreview"
+                style="display: none; margin-top: 10px"
+              >
+                <img
+                  id="chaletPreviewImg"
+                  style="max-height: 200px; border-radius: 10px"
+                />
+                <br />
+                <button
+                  type="button"
+                  class="btn btn-sm btn-danger mt-2"
+                  onclick="removeChaletImage()"
+                >
+                  <i class="bi bi-x-circle"></i> إزالة الصورة
+                </button>
+              </div>
+            </div>
+            <small class="text-muted">اختر صورة للشاليه (اختياري)</small>
+          </div>
+
+          <script>
+            // معاينة صورة الشاليه
+            const chaletUploadArea =
+              document.getElementById("chaletUploadArea");
+            const chaletImageInput =
+              document.getElementById("chaletImageInput");
+            const chaletImagePreview =
+              document.getElementById("chaletImagePreview");
+            const chaletPreviewImg =
+              document.getElementById("chaletPreviewImg");
+
+            chaletUploadArea.addEventListener("click", function () {
+              chaletImageInput.click();
+            });
+
+            chaletUploadArea.addEventListener("dragover", function (e) {
+              e.preventDefault();
+              this.style.borderColor = "#28a745";
+              this.style.background = "rgba(40, 167, 69, 0.1)";
+            });
+
+            chaletUploadArea.addEventListener("dragleave", function (e) {
+              e.preventDefault();
+              this.style.borderColor = "#ccc";
+              this.style.background = "transparent";
+            });
+
+            chaletUploadArea.addEventListener("drop", function (e) {
+              e.preventDefault();
+              this.style.borderColor = "#ccc";
+              this.style.background = "transparent";
+
+              const files = e.dataTransfer.files;
+              if (files.length > 0) {
+                chaletImageInput.files = files;
+                previewChaletImage(files[0]);
+              }
+            });
+
+            chaletImageInput.addEventListener("change", function () {
+              if (this.files.length > 0) {
+                previewChaletImage(this.files[0]);
+              }
+            });
+
+            function previewChaletImage(file) {
+              if (file.size > 5 * 1024 * 1024) {
+                alert("حجم الصورة كبير جداً. الحد الأقصى 5 ميجابايت.");
+                chaletImageInput.value = "";
+                return;
+              }
+
+              const reader = new FileReader();
+              reader.onload = function (e) {
+                chaletPreviewImg.src = e.target.result;
+                chaletImagePreview.style.display = "block";
+                chaletUploadArea.querySelector("i").style.display = "none";
+                chaletUploadArea.querySelector("p").style.display = "none";
+              };
+              reader.readAsDataURL(file);
+            }
+
+            function removeChaletImage() {
+              chaletImageInput.value = "";
+              chaletImagePreview.style.display = "none";
+              chaletUploadArea.querySelector("i").style.display = "block";
+              chaletUploadArea.querySelector("p").style.display = "block";
+            }
+          </script>
+
+          <div class="mb-3">
+            <label class="form-label">المرافق (مفصولة بفاصلة)</label>
+            <input
+              type="text"
+              name="amenities"
+              class="form-control"
+              value="مسبح, واي فاي, تكييف"
+            />
+            <small class="text-muted"
+              >مثال: مسبح, واي فاي, تكييف, موقف سيارات</small
+            >
+          </div>
+
+          <div class="alert alert-warning">
+            <i class="bi bi-shield-check"></i> سيتم مراجعة طلبك من قبل الإدارة
+            قبل النشر
+          </div>
+
+          <button type="submit" class="btn btn-gold w-100 py-2">
+            <i class="bi bi-plus-circle"></i> إرسال للمراجعة
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

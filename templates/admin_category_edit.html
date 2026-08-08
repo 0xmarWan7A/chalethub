@@ -1,0 +1,210 @@
+{% extends "base.html" %} {% block content %}
+<div class="row">
+  <div class="col-md-8 mx-auto">
+    <div class="card">
+      <div class="card-header bg-warning">
+        <h5 class="mb-0">
+          <i class="bi bi-pencil"></i> تعديل التصنيف: {{ category.name_ar }}
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label">الصورة الحالية</label>
+          <div>
+            {% if category.image %} {% if category.image ==
+            'default_category.jpg' %}
+            <img
+              src="{{ url_for('static', filename='img/default_category.jpg') }}"
+              style="max-height: 150px; border-radius: 10px"
+            />
+            {% elif category.image.startswith('C') %}
+            <img
+              src="{{ url_for('static', filename='img/' + category.image) }}"
+              style="max-height: 150px; border-radius: 10px"
+              onerror="this.src='{{ url_for('static', filename='img/default_category.jpg') }}'"
+            />
+            {% else %}
+            <img
+              src="{{ url_for('uploaded_file', filename='categories/' + category.image) }}"
+              style="max-height: 150px; border-radius: 10px"
+              onerror="this.src='{{ url_for('static', filename='img/default_category.jpg') }}'"
+            />
+            {% endif %} {% else %}
+            <img
+              src="{{ url_for('static', filename='img/default_category.jpg') }}"
+              style="max-height: 150px; border-radius: 10px"
+            />
+            {% endif %}
+          </div>
+        </div>
+        <form method="POST" enctype="multipart/form-data" id="categoryForm">
+          <div class="mb-3">
+            <label class="form-label">الاسم (عربي) *</label>
+            <input
+              type="text"
+              name="name_ar"
+              class="form-control"
+              value="{{ category.name_ar }}"
+              required
+            />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">الاسم (إنجليزي)</label>
+            <input
+              type="text"
+              name="name_en"
+              class="form-control"
+              value="{{ category.name_en }}"
+            />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">الوصف</label>
+            <textarea name="description" class="form-control" rows="3">
+{{ category.description }}</textarea
+            >
+          </div>
+          <div class="mb-3">
+            <label class="form-label">الأيقونة</label>
+            <input
+              type="text"
+              name="icon"
+              class="form-control"
+              value="{{ category.icon }}"
+            />
+            <small class="text-muted">مثال: bi-house, bi-star, bi-gem</small>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">تغيير الصورة</label>
+            <div
+              class="upload-area"
+              id="uploadArea"
+              style="
+                border: 2px dashed #ccc;
+                border-radius: 10px;
+                padding: 30px;
+                text-align: center;
+                cursor: pointer;
+                transition: 0.3s;
+              "
+            >
+              <i
+                class="bi bi-cloud-upload"
+                style="font-size: 3rem; color: #ccc"
+              ></i>
+              <p class="mt-2">اسحب الصورة الجديدة هنا أو انقر للاختيار</p>
+              <input
+                type="file"
+                name="image"
+                id="imageInput"
+                accept="image/*"
+                style="display: none"
+              />
+              <div id="imagePreview" style="display: none; margin-top: 10px">
+                <img
+                  id="previewImg"
+                  style="max-height: 200px; border-radius: 10px"
+                />
+                <br />
+                <button
+                  type="button"
+                  class="btn btn-sm btn-danger mt-2"
+                  onclick="removeImage()"
+                >
+                  <i class="bi bi-x-circle"></i> إزالة الصورة الجديدة
+                </button>
+              </div>
+            </div>
+            <small class="text-muted"
+              >اتركه فارغاً للحفاظ على الصورة الحالية</small
+            >
+          </div>
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-warning">
+              <i class="bi bi-save"></i> تحديث
+            </button>
+            <a
+              href="{{ url_for('admin_categories') }}"
+              class="btn btn-secondary"
+            >
+              <i class="bi bi-x-circle"></i> إلغاء
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // معاينة الصورة قبل الرفع
+  const uploadArea = document.getElementById("uploadArea");
+  const imageInput = document.getElementById("imageInput");
+  const imagePreview = document.getElementById("imagePreview");
+  const previewImg = document.getElementById("previewImg");
+
+  uploadArea.addEventListener("click", function () {
+    imageInput.click();
+  });
+
+  uploadArea.addEventListener("dragover", function (e) {
+    e.preventDefault();
+    this.style.borderColor = "#ffc107";
+    this.style.background = "rgba(255, 193, 7, 0.1)";
+  });
+
+  uploadArea.addEventListener("dragleave", function (e) {
+    e.preventDefault();
+    this.style.borderColor = "#ccc";
+    this.style.background = "transparent";
+  });
+
+  uploadArea.addEventListener("drop", function (e) {
+    e.preventDefault();
+    this.style.borderColor = "#ccc";
+    this.style.background = "transparent";
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      imageInput.files = files;
+      previewImage(files[0]);
+    }
+  });
+
+  imageInput.addEventListener("change", function () {
+    if (this.files.length > 0) {
+      previewImage(this.files[0]);
+    }
+  });
+
+  function previewImage(file) {
+    if (file.size > 5 * 1024 * 1024) {
+      alert("حجم الصورة كبير جداً. الحد الأقصى 5 ميجابايت.");
+      imageInput.value = "";
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      previewImg.src = e.target.result;
+      imagePreview.style.display = "block";
+      uploadArea.querySelector("i").style.display = "none";
+      uploadArea.querySelector("p").style.display = "none";
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removeImage() {
+    imageInput.value = "";
+    imagePreview.style.display = "none";
+    uploadArea.querySelector("i").style.display = "block";
+    uploadArea.querySelector("p").style.display = "block";
+  }
+</script>
+
+<style>
+  .upload-area:hover {
+    border-color: #ffc107 !important;
+    background: rgba(255, 193, 7, 0.05) !important;
+  }
+</style>
+{% endblock %}

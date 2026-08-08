@@ -1,0 +1,118 @@
+{% extends "base.html" %} {% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8 col-12">
+    <div class="card">
+      <div class="card-header bg-primary text-white py-2">
+        <h5 class="mb-0">
+          <i class="bi bi-arrow-up-circle"></i> ترقية صلاحيات المستخدم
+        </h5>
+      </div>
+      <div class="card-body p-3 p-md-4">
+        <div class="alert alert-info small">
+          <p class="mb-1"><strong>المستخدم:</strong> {{ user.name }}</p>
+          <p class="mb-1">
+            <strong>الدور الحالي:</strong>
+            <span
+              class="badge {% if user.role == 'admin' %}bg-danger{% elif user.role == 'owner' %}bg-info{% else %}bg-secondary{% endif %}"
+            >
+              {% if user.role == 'admin' %}مدير{% elif user.role == 'owner'
+              %}مالك{% else %}عميل{% endif %}
+            </span>
+          </p>
+          <p class="mb-0">
+            <strong>الحالة:</strong>
+            <span
+              class="badge {% if user.status == 'approved' %}bg-success{% elif user.status == 'pending' %}bg-warning{% else %}bg-danger{% endif %}"
+            >
+              {% if user.status == 'approved' %}موافق{% elif user.status ==
+              'pending' %}معلق{% else %}مرفوض{% endif %}
+            </span>
+          </p>
+        </div>
+
+        <form method="POST">
+          <div class="mb-3">
+            <label class="form-label">اختر الدور الجديد</label>
+            <select name="new_role" class="form-select form-select-lg">
+              {% if user.role == 'customer' %}
+              <option value="customer" selected>
+                👤 عميل - يمكنه حجز الشاليهات
+              </option>
+              {% else %}
+              <option value="customer">👤 عميل - يمكنه حجز الشاليهات</option>
+              {% endif %} {% if user.role == 'owner' %}
+              <option value="owner" selected>
+                🏠 مالك - يمكنه إضافة وإدارة الشاليهات
+              </option>
+              {% else %}
+              <option value="owner">
+                🏠 مالك - يمكنه إضافة وإدارة الشاليهات
+              </option>
+              {% endif %} {% if user.role == 'admin' %}
+              <option value="admin" selected>🔒 مدير - صلاحيات كاملة</option>
+              {% else %}
+              <option value="admin">🔒 مدير - صلاحيات كاملة</option>
+              {% endif %}
+            </select>
+          </div>
+
+          {% if user.role == 'owner' %}
+          <div class="alert alert-warning small">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <strong>تنبيه:</strong> إذا قمت بتنزيل هذا المستخدم من مالك، سيتم
+            حذف جميع شاليهاته.
+          </div>
+          {% endif %} {% if user.role == 'admin' %}
+          <div class="alert alert-danger small">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <strong>تحذير:</strong> أنت تقوم بتغيير دور مدير. قد يفقد صلاحياته
+            الإدارية.
+          </div>
+          {% endif %}
+
+          <div class="d-flex flex-wrap gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-arrow-up-circle"></i> تحديث الدور
+            </button>
+            <a href="{{ url_for('admin_users') }}" class="btn btn-secondary">
+              <i class="bi bi-x-circle"></i> إلغاء
+            </a>
+          </div>
+        </form>
+
+        <div class="mt-3">
+          <h6 class="small">ملخص الصلاحيات:</h6>
+          <ul class="list-unstyled small">
+            <li>
+              <span class="badge bg-secondary">عميل</span> - تصفح وحجز الشاليهات
+            </li>
+            <li>
+              <span class="badge bg-info">مالك</span> - إضافة وإدارة الشاليهات
+            </li>
+            <li>
+              <span class="badge bg-danger">مدير</span> - صلاحيات كاملة في
+              النظام
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  @media (max-width: 576px) {
+    .card-body {
+      padding: 1rem !important;
+    }
+    .form-select-lg {
+      font-size: 0.9rem;
+      padding: 0.5rem 0.75rem;
+    }
+    .btn {
+      font-size: 0.85rem;
+      padding: 0.4rem 0.8rem;
+    }
+  }
+</style>
+{% endblock %}
