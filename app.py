@@ -161,8 +161,6 @@ def utility_processor():
 
 # --- استيراد قاعدة البيانات ---
 import database as db
-from supabase import create_client
-import os
 
 # --- دوال المصادقة ---
 def login_required(role=None):
@@ -282,7 +280,6 @@ def signup():
             if not all([username, password, name, phone, national_id]):
                 flash('يرجى ملء جميع الحقول المطلوبة', 'danger')
                 return render_template('signup.html')
-                
             
             if password != confirm_password:
                 flash('كلمات المرور غير متطابقة', 'danger')
@@ -335,11 +332,17 @@ def signup():
                     'emergency_contact': emergency_contact
                 })
             
-            db.create_user(user_data)
-            flash('تم التسجيل بنجاح! في انتظار موافقة المدير.', 'success')
-            return redirect(url_for('login'))
+            user_id = db.create_user(user_data)
+            
+            if user_id:
+                flash('تم التسجيل بنجاح! في انتظار موافقة المدير.', 'success')
+                return redirect(url_for('login'))
+            else:
+                flash('حدث خطأ في إنشاء الحساب. يرجى المحاولة مرة أخرى.', 'danger')
+                return render_template('signup.html')
             
         except Exception as e:
+            print(f"❌ خطأ في التسجيل: {str(e)}")
             flash(f'حدث خطأ: {str(e)}', 'danger')
             return render_template('signup.html')
     
@@ -357,25 +360,35 @@ def login():
             flash('الرجاء إدخال اسم المستخدم وكلمة المرور', 'danger')
             return render_template('login.html')
         
-        user = db.get_user_by_username(username)
-        if user and check_password_hash(user['password'], password):
-            if user['role'] != 'admin' and user['status'] != 'approved':
-                if user['status'] == 'pending':
-                    flash('حسابك في انتظار الموافقة من المدير', 'warning')
-                else:
-                    flash('تم رفض حسابك. يرجى التواصل مع الدعم.', 'danger')
+        try:
+            user = db.get_user_by_username(username)
+            
+            if not user:
+                flash('اسم المستخدم أو كلمة المرور غير صحيحة', 'danger')
                 return render_template('login.html')
             
-            session.permanent = True
-            session['user_id'] = user['id']
-            session['username'] = user['username']
-            session['role'] = user['role']
-            session['name'] = user['name']
-            
-            flash(f'مرحباً بعودتك, {user["name"]}!', 'success')
-            return redirect(url_for('dashboard'))
-        
-        flash('اسم المستخدم أو كلمة المرور غير صحيحة', 'danger')
+            if check_password_hash(user['password'], password):
+                if user['role'] != 'admin' and user['status'] != 'approved':
+                    if user['status'] == 'pending':
+                        flash('حسابك في انتظار الموافقة من المدير', 'warning')
+                    else:
+                        flash('تم رفض حسابك. يرجى التواصل مع الدعم.', 'danger')
+                    return render_template('login.html')
+                
+                session.permanent = True
+                session['user_id'] = user['id']
+                session['username'] = user['username']
+                session['role'] = user['role']
+                session['name'] = user['name']
+                
+                flash(f'مرحباً بعودتك, {user["name"]}!', 'success')
+                return redirect(url_for('dashboard'))
+            else:
+                flash('اسم المستخدم أو كلمة المرور غير صحيحة', 'danger')
+                
+        except Exception as e:
+            print(f"❌ خطأ في تسجيل الدخول: {e}")
+            flash('حدث خطأ في تسجيل الدخول. يرجى المحاولة مرة أخرى.', 'danger')
     
     return render_template('login.html')
 
@@ -506,24 +519,22 @@ def owner_delete_image(image_id):
         flash('الصورة غير موجودة', 'danger')
         return redirect(url_for('owner_dashboard'))
     
-    from supabase import create_client
-    supabase = create_client(os.environ.get('SUPABASE_URL'), os.environ.get('SUPABASE_KEY'))
-    
     try:
-        image = supabase.table('chalet_images').select('*, chalets(owner_id)').eq('id', image_id).execute()
-        if not image.data:
+        image = db.get_chalet_image_by_id(image_id)
+        if not image:
             flash('الصورة غير موجودة', 'danger')
             return redirect(url_for('owner_dashboard'))
         
-        image_data = image.data[0]
-        if image_data['chalets']['owner_id'] != session['user_id']:
+        # التحقق من الملكية
+        chalet = db.get_chalet_by_id(image['chalet_id'])
+        if not chalet or chalet['owner_id'] != session['user_id']:
             flash('ليس لديك صلاحية لحذف هذه الصورة', 'danger')
             return redirect(url_for('owner_dashboard'))
         
-        delete_uploaded_file(image_data['image'])
+        delete_uploaded_file(image['image'])
         db.delete_chalet_image(image_id)
         flash('تم حذف الصورة بنجاح', 'success')
-        return redirect(url_for('owner_chalet_images', chalet_id=image_data['chalet_id']))
+        return redirect(url_for('owner_chalet_images', chalet_id=image['chalet_id']))
     except Exception as e:
         flash(f'حدث خطأ: {str(e)}', 'danger')
         return redirect(url_for('owner_dashboard'))
@@ -535,23 +546,20 @@ def owner_set_main_image(image_id):
         flash('الصورة غير موجودة', 'danger')
         return redirect(url_for('owner_dashboard'))
     
-    from supabase import create_client
-    supabase = create_client(os.environ.get('SUPABASE_URL'), os.environ.get('SUPABASE_KEY'))
-    
     try:
-        image = supabase.table('chalet_images').select('*, chalets(owner_id)').eq('id', image_id).execute()
-        if not image.data:
+        image = db.get_chalet_image_by_id(image_id)
+        if not image:
             flash('الصورة غير موجودة', 'danger')
             return redirect(url_for('owner_dashboard'))
         
-        image_data = image.data[0]
-        if image_data['chalets']['owner_id'] != session['user_id']:
+        chalet = db.get_chalet_by_id(image['chalet_id'])
+        if not chalet or chalet['owner_id'] != session['user_id']:
             flash('ليس لديك صلاحية لتعديل هذه الصورة', 'danger')
             return redirect(url_for('owner_dashboard'))
         
-        db.set_main_chalet_image(image_id, image_data['chalet_id'])
+        db.set_main_chalet_image(image_id, image['chalet_id'])
         flash('تم تعيين الصورة كصورة رئيسية', 'success')
-        return redirect(url_for('owner_chalet_images', chalet_id=image_data['chalet_id']))
+        return redirect(url_for('owner_chalet_images', chalet_id=image['chalet_id']))
     except Exception as e:
         flash(f'حدث خطأ: {str(e)}', 'danger')
         return redirect(url_for('owner_dashboard'))
