@@ -114,20 +114,17 @@ init_db()
 def get_user_by_id(user_id):
     """الحصول على مستخدم بواسطة المعرف"""
     try:
-        # الحصول على المستخدم
         user = supabase.table('users').select('*').eq('id', user_id).execute()
         if not user.data:
             return None
         
         user_data = user.data[0]
         
-        # الحصول على تفاصيل المالك إذا كان مالكاً
         if user_data.get('role') == 'owner':
             owner = supabase.table('owner_details').select('*').eq('user_id', user_id).execute()
             if owner.data:
                 user_data.update(owner.data[0])
         
-        # الحصول على تفاصيل العميل إذا كان عميلاً
         if user_data.get('role') == 'customer':
             customer = supabase.table('customer_details').select('*').eq('user_id', user_id).execute()
             if customer.data:
@@ -150,14 +147,10 @@ def get_user_by_username(username):
 def get_all_users():
     """الحصول على جميع المستخدمين"""
     try:
-        users = supabase.table('users')\
-            .select('*')\
-            .order('created_at', desc=True)\
-            .execute()
+        users = supabase.table('users').select('*').order('created_at', desc=True).execute()
         
         result = []
         for user in users.data if users.data else []:
-            # الحصول على تفاصيل إضافية
             if user.get('role') == 'owner':
                 owner = supabase.table('owner_details').select('*').eq('user_id', user['id']).execute()
                 if owner.data:
@@ -167,7 +160,6 @@ def get_all_users():
                 if customer.data:
                     user.update(customer.data[0])
             
-            # حساب عدد الشاليهات للمالك
             if user.get('role') == 'owner':
                 chalets = supabase.table('chalets').select('*', count='exact').eq('owner_id', user['id']).execute()
                 user['chalet_count'] = chalets.count
@@ -182,16 +174,10 @@ def get_all_users():
 def get_pending_users():
     """الحصول على المستخدمين المعلقين"""
     try:
-        users = supabase.table('users')\
-            .select('*')\
-            .eq('status', 'pending')\
-            .neq('role', 'admin')\
-            .order('created_at', desc=True)\
-            .execute()
+        users = supabase.table('users').select('*').eq('status', 'pending').neq('role', 'admin').order('created_at', desc=True).execute()
         
         result = []
         for user in users.data if users.data else []:
-            # الحصول على تفاصيل المالك إذا كان مالكاً
             if user.get('role') == 'owner':
                 owner = supabase.table('owner_details').select('*').eq('user_id', user['id']).execute()
                 if owner.data:
@@ -228,15 +214,22 @@ def reject_user(user_id):
 def create_user(data):
     """إنشاء مستخدم جديد"""
     try:
+        if not data.get('username') or not data.get('password'):
+            print("❌ اسم المستخدم أو كلمة المرور مفقودة")
+            return None
+        
         user_id = generate_uuid()
+        
+        hashed_password = generate_password_hash(data['password'])
+        
         user_data = {
             'id': user_id,
             'username': data['username'],
-            'password': generate_password_hash(data['password']),
-            'role': data['role'],
-            'name': data['name'],
+            'password': hashed_password,
+            'role': data.get('role', 'customer'),
+            'name': data.get('name', ''),
             'email': data.get('email', ''),
-            'phone': data['phone'],
+            'phone': data.get('phone', ''),
             'national_id': data.get('national_id', ''),
             'national_id_image': data.get('national_id_image', ''),
             'status': 'pending'
@@ -244,26 +237,36 @@ def create_user(data):
         
         result = supabase.table('users').insert(user_data).execute()
         
-        if data['role'] == 'owner':
-            supabase.table('owner_details').insert({
+        if not result.data:
+            print("❌ فشل إنشاء المستخدم")
+            return None
+        
+        user_id = result.data[0]['id']
+        
+        if data.get('role') == 'owner':
+            owner_data = {
                 'id': generate_uuid(),
                 'user_id': user_id,
                 'chalet_number': data.get('chalet_number', ''),
                 'chalet_card_image': data.get('chalet_card_image', ''),
                 'business_name': data.get('business_name', '')
-            }).execute()
-        elif data['role'] == 'customer':
-            supabase.table('customer_details').insert({
+            }
+            supabase.table('owner_details').insert(owner_data).execute()
+            
+        elif data.get('role') == 'customer':
+            customer_data = {
                 'id': generate_uuid(),
                 'user_id': user_id,
                 'date_of_birth': data.get('date_of_birth', ''),
                 'address': data.get('address', ''),
                 'emergency_contact': data.get('emergency_contact', '')
-            }).execute()
+            }
+            supabase.table('customer_details').insert(customer_data).execute()
         
         return user_id
+        
     except Exception as e:
-        print(f"خطأ في create_user: {e}")
+        print(f"❌ خطأ في create_user: {str(e)}")
         return None
 
 def update_user(user_id, data):
@@ -408,12 +411,7 @@ def add_chalet_image(chalet_id, image_path, is_main=False):
 def get_chalet_images(chalet_id):
     """الحصول على جميع صور الشاليه"""
     try:
-        images = supabase.table('chalet_images')\
-            .select('*')\
-            .eq('chalet_id', chalet_id)\
-            .order('is_main', desc=True)\
-            .order('created_at', desc=True)\
-            .execute()
+        images = supabase.table('chalet_images').select('*').eq('chalet_id', chalet_id).order('is_main', desc=True).order('created_at', desc=True).execute()
         return images.data if images.data else []
     except Exception as e:
         print(f"خطأ في get_chalet_images: {e}")
@@ -437,6 +435,15 @@ def set_main_chalet_image(image_id, chalet_id):
     except Exception as e:
         print(f"خطأ في set_main_chalet_image: {e}")
         return False
+
+def get_chalet_image_by_id(image_id):
+    """الحصول على صورة شاليه بواسطة المعرف"""
+    try:
+        image = supabase.table('chalet_images').select('*').eq('id', image_id).execute()
+        return image.data[0] if image.data else None
+    except Exception as e:
+        print(f"خطأ في get_chalet_image_by_id: {e}")
+        return None
 
 # ============================================================
 # دوال إدارة التواريخ المحجوزة من المالك
@@ -468,11 +475,7 @@ def delete_owner_booked_date(chalet_id, date):
 def get_owner_booked_dates(chalet_id):
     """الحصول على التواريخ المحجوزة من قبل المالك"""
     try:
-        dates = supabase.table('owner_booked_dates')\
-            .select('*')\
-            .eq('chalet_id', chalet_id)\
-            .order('date')\
-            .execute()
+        dates = supabase.table('owner_booked_dates').select('*').eq('chalet_id', chalet_id).order('date').execute()
         return dates.data if dates.data else []
     except Exception as e:
         print(f"خطأ في get_owner_booked_dates: {e}")
@@ -481,32 +484,20 @@ def get_owner_booked_dates(chalet_id):
 def get_booking_dates_for_chalet(chalet_id):
     """الحصول على التواريخ المحجوزة من الحجوزات المؤكدة"""
     try:
-        # الحصول على الحجوزات المؤكدة
-        confirmed_bookings = supabase.table('bookings')\
-            .select('id')\
-            .eq('chalet_id', chalet_id)\
-            .eq('status', 'confirmed')\
-            .execute()
-        
+        confirmed_bookings = supabase.table('bookings').select('id').eq('chalet_id', chalet_id).eq('status', 'confirmed').execute()
         booking_ids = [b['id'] for b in confirmed_bookings.data] if confirmed_bookings.data else []
         
         if not booking_ids:
             return []
         
-        # الحصول على التواريخ المحجوزة
-        dates = supabase.table('booked_dates')\
-            .select('date')\
-            .eq('chalet_id', chalet_id)\
-            .in_('booking_id', booking_ids)\
-            .execute()
-        
+        dates = supabase.table('booked_dates').select('date').eq('chalet_id', chalet_id).in_('booking_id', booking_ids).execute()
         return [d['date'] for d in dates.data] if dates.data else []
     except Exception as e:
         print(f"خطأ في get_booking_dates_for_chalet: {e}")
         return []
 
 # ============================================================
-# دوال إدارة الشاليهات (المُصلحة)
+# دوال إدارة الشاليهات
 # ============================================================
 
 def create_chalet(data):
@@ -540,16 +531,10 @@ def create_chalet(data):
 def get_chalets_by_owner(owner_id):
     """الحصول على شاليهات المالك"""
     try:
-        # الحصول على الشاليهات أولاً
-        chalets = supabase.table('chalets')\
-            .select('*')\
-            .eq('owner_id', owner_id)\
-            .order('created_at', desc=True)\
-            .execute()
+        chalets = supabase.table('chalets').select('*').eq('owner_id', owner_id).order('created_at', desc=True).execute()
         
         result = []
         for chalet in chalets.data if chalets.data else []:
-            # الحصول على اسم التصنيف
             if chalet.get('category_id'):
                 category = supabase.table('categories').select('name_ar, name_en').eq('id', chalet['category_id']).execute()
                 if category.data:
@@ -569,22 +554,15 @@ def get_chalets_by_owner(owner_id):
 def get_all_chalets():
     """الحصول على جميع الشاليهات الموافق عليها"""
     try:
-        # الحصول على الشاليهات
-        chalets = supabase.table('chalets')\
-            .select('*')\
-            .eq('status', 'approved')\
-            .order('created_at', desc=True)\
-            .execute()
+        chalets = supabase.table('chalets').select('*').eq('status', 'approved').order('created_at', desc=True).execute()
         
         result = []
         for chalet in chalets.data if chalets.data else []:
-            # الحصول على بيانات المالك
             owner = supabase.table('users').select('name, phone').eq('id', chalet['owner_id']).execute()
             if owner.data:
                 chalet['owner_name'] = owner.data[0]['name']
                 chalet['owner_phone'] = owner.data[0]['phone']
             
-            # الحصول على بيانات التصنيف
             if chalet.get('category_id'):
                 category = supabase.table('categories').select('*').eq('id', chalet['category_id']).execute()
                 if category.data:
@@ -593,16 +571,9 @@ def get_all_chalets():
                     chalet['category_icon'] = category.data[0]['icon']
                     chalet['category_image'] = category.data[0]['image']
             
-            # الحصول على الصور
-            images = supabase.table('chalet_images')\
-                .select('*')\
-                .eq('chalet_id', chalet['id'])\
-                .order('is_main', desc=True)\
-                .order('created_at', desc=True)\
-                .execute()
+            images = supabase.table('chalet_images').select('*').eq('chalet_id', chalet['id']).order('is_main', desc=True).order('created_at', desc=True).execute()
             chalet['images'] = images.data if images.data else []
             
-            # معالجة المرافق
             if chalet.get('amenities'):
                 chalet['amenities'] = json.loads(chalet['amenities'])
             else:
@@ -617,21 +588,15 @@ def get_all_chalets():
 def get_pending_chalets():
     """الحصول على الشاليهات المعلقة"""
     try:
-        chalets = supabase.table('chalets')\
-            .select('*')\
-            .eq('status', 'pending')\
-            .order('created_at', desc=True)\
-            .execute()
+        chalets = supabase.table('chalets').select('*').eq('status', 'pending').order('created_at', desc=True).execute()
         
         result = []
         for chalet in chalets.data if chalets.data else []:
-            # الحصول على بيانات المالك
             owner = supabase.table('users').select('name, phone').eq('id', chalet['owner_id']).execute()
             if owner.data:
                 chalet['owner_name'] = owner.data[0]['name']
                 chalet['owner_phone'] = owner.data[0]['phone']
             
-            # الحصول على بيانات التصنيف
             if chalet.get('category_id'):
                 category = supabase.table('categories').select('name_ar, name_en').eq('id', chalet['category_id']).execute()
                 if category.data:
@@ -673,20 +638,17 @@ def reject_chalet(chalet_id):
 def get_chalet_by_id(chalet_id):
     """الحصول على شاليه بواسطة المعرف"""
     try:
-        # الحصول على الشاليه
         chalet = supabase.table('chalets').select('*').eq('id', chalet_id).execute()
         if not chalet.data:
             return None
         
         chalet_dict = chalet.data[0]
         
-        # الحصول على بيانات المالك
         owner = supabase.table('users').select('name, phone').eq('id', chalet_dict['owner_id']).execute()
         if owner.data:
             chalet_dict['owner_name'] = owner.data[0]['name']
             chalet_dict['owner_phone'] = owner.data[0]['phone']
         
-        # الحصول على بيانات التصنيف
         if chalet_dict.get('category_id'):
             category = supabase.table('categories').select('*').eq('id', chalet_dict['category_id']).execute()
             if category.data:
@@ -695,16 +657,9 @@ def get_chalet_by_id(chalet_id):
                 chalet_dict['category_icon'] = category.data[0]['icon']
                 chalet_dict['category_image'] = category.data[0]['image']
         
-        # الحصول على الصور
-        images = supabase.table('chalet_images')\
-            .select('*')\
-            .eq('chalet_id', chalet_id)\
-            .order('is_main', desc=True)\
-            .order('created_at', desc=True)\
-            .execute()
+        images = supabase.table('chalet_images').select('*').eq('chalet_id', chalet_id).order('is_main', desc=True).order('created_at', desc=True).execute()
         chalet_dict['images'] = images.data if images.data else []
         
-        # معالجة المرافق
         if chalet_dict.get('amenities'):
             chalet_dict['amenities'] = json.loads(chalet_dict['amenities'])
         else:
@@ -726,7 +681,7 @@ def delete_chalet(chalet_id):
         return False
 
 # ============================================================
-# دوال إدارة الحجوزات (المُصلحة)
+# دوال إدارة الحجوزات
 # ============================================================
 
 def create_booking(data):
@@ -747,7 +702,6 @@ def create_booking(data):
         
         result = supabase.table('bookings').insert(booking_data).execute()
         
-        # إضافة التواريخ المحجوزة
         start = datetime.strptime(data['start_date'], '%Y-%m-%d')
         end = datetime.strptime(data['end_date'], '%Y-%m-%d')
         current = start
@@ -768,30 +722,15 @@ def create_booking(data):
 def get_all_booked_dates(chalet_id):
     """الحصول على جميع التواريخ المحجوزة"""
     try:
-        # الحصول على الحجوزات المؤكدة
-        confirmed_bookings = supabase.table('bookings')\
-            .select('id')\
-            .eq('chalet_id', chalet_id)\
-            .eq('status', 'confirmed')\
-            .execute()
-        
+        confirmed_bookings = supabase.table('bookings').select('id').eq('chalet_id', chalet_id).eq('status', 'confirmed').execute()
         booking_ids = [b['id'] for b in confirmed_bookings.data] if confirmed_bookings.data else []
         
         booking_dates = []
         if booking_ids:
-            dates = supabase.table('booked_dates')\
-                .select('date')\
-                .eq('chalet_id', chalet_id)\
-                .in_('booking_id', booking_ids)\
-                .gte('date', datetime.now().strftime('%Y-%m-%d'))\
-                .execute()
+            dates = supabase.table('booked_dates').select('date').eq('chalet_id', chalet_id).in_('booking_id', booking_ids).gte('date', datetime.now().strftime('%Y-%m-%d')).execute()
             booking_dates = [d['date'] for d in dates.data] if dates.data else []
         
-        # التواريخ من المالك
-        owner_dates = supabase.table('owner_booked_dates')\
-            .select('date')\
-            .eq('chalet_id', chalet_id)\
-            .execute()
+        owner_dates = supabase.table('owner_booked_dates').select('date').eq('chalet_id', chalet_id).execute()
         owner_dates_list = [d['date'] for d in owner_dates.data] if owner_dates.data else []
         
         all_dates = booking_dates + owner_dates_list
@@ -803,35 +742,15 @@ def get_all_booked_dates(chalet_id):
 def check_availability_with_owner_dates(chalet_id, start_date, end_date):
     """التحقق من التوفر مع تواريخ المالك"""
     try:
-        # التحقق من تواريخ المالك
-        owner_dates = supabase.table('owner_booked_dates')\
-            .select('date')\
-            .eq('chalet_id', chalet_id)\
-            .gte('date', start_date)\
-            .lte('date', end_date)\
-            .execute()
-        
+        owner_dates = supabase.table('owner_booked_dates').select('date').eq('chalet_id', chalet_id).gte('date', start_date).lte('date', end_date).execute()
         if owner_dates.data:
             return False
         
-        # التحقق من الحجوزات المؤكدة
-        confirmed_bookings = supabase.table('bookings')\
-            .select('id')\
-            .eq('chalet_id', chalet_id)\
-            .eq('status', 'confirmed')\
-            .execute()
-        
+        confirmed_bookings = supabase.table('bookings').select('id').eq('chalet_id', chalet_id).eq('status', 'confirmed').execute()
         booking_ids = [b['id'] for b in confirmed_bookings.data] if confirmed_bookings.data else []
         
         if booking_ids:
-            booked_dates = supabase.table('booked_dates')\
-                .select('date')\
-                .eq('chalet_id', chalet_id)\
-                .gte('date', start_date)\
-                .lte('date', end_date)\
-                .in_('booking_id', booking_ids)\
-                .execute()
-            
+            booked_dates = supabase.table('booked_dates').select('date').eq('chalet_id', chalet_id).gte('date', start_date).lte('date', end_date).in_('booking_id', booking_ids).execute()
             if booked_dates.data:
                 return False
         
@@ -843,27 +762,21 @@ def check_availability_with_owner_dates(chalet_id, start_date, end_date):
 def get_bookings():
     """الحصول على جميع الحجوزات"""
     try:
-        bookings = supabase.table('bookings')\
-            .select('*')\
-            .order('created_at', desc=True)\
-            .execute()
+        bookings = supabase.table('bookings').select('*').order('created_at', desc=True).execute()
         
         result = []
         for booking in bookings.data if bookings.data else []:
-            # الحصول على بيانات الشاليه
             chalet = supabase.table('chalets').select('name_ar, name_en').eq('id', booking['chalet_id']).execute()
             if chalet.data:
                 booking['chalet_name_ar'] = chalet.data[0]['name_ar']
                 booking['chalet_name_en'] = chalet.data[0]['name_en']
             
-            # الحصول على بيانات العميل
             customer = supabase.table('users').select('name, phone, national_id').eq('id', booking['customer_id']).execute()
             if customer.data:
                 booking['customer_name'] = customer.data[0]['name']
                 booking['customer_phone'] = customer.data[0]['phone']
                 booking['customer_national_id'] = customer.data[0]['national_id']
             
-            # الحصول على بيانات المالك (من الشاليه)
             if chalet.data:
                 owner = supabase.table('users').select('name, phone').eq('id', chalet.data[0]['owner_id']).execute()
                 if owner.data:
@@ -879,29 +792,21 @@ def get_bookings():
 def get_bookings_by_owner(owner_id):
     """الحصول على حجوزات شاليهات المالك"""
     try:
-        # الحصول على شاليهات المالك
         chalets = supabase.table('chalets').select('id').eq('owner_id', owner_id).execute()
         chalet_ids = [c['id'] for c in chalets.data] if chalets.data else []
         
         if not chalet_ids:
             return []
         
-        # الحصول على الحجوزات
-        bookings = supabase.table('bookings')\
-            .select('*')\
-            .in_('chalet_id', chalet_ids)\
-            .order('created_at', desc=True)\
-            .execute()
+        bookings = supabase.table('bookings').select('*').in_('chalet_id', chalet_ids).order('created_at', desc=True).execute()
         
         result = []
         for booking in bookings.data if bookings.data else []:
-            # الحصول على بيانات الشاليه
             chalet = supabase.table('chalets').select('name_ar, name_en').eq('id', booking['chalet_id']).execute()
             if chalet.data:
                 booking['chalet_name_ar'] = chalet.data[0]['name_ar']
                 booking['chalet_name_en'] = chalet.data[0]['name_en']
             
-            # الحصول على بيانات العميل
             customer = supabase.table('users').select('name, phone, national_id').eq('id', booking['customer_id']).execute()
             if customer.data:
                 booking['customer_name'] = customer.data[0]['name']
@@ -917,22 +822,16 @@ def get_bookings_by_owner(owner_id):
 def get_bookings_by_customer(customer_id):
     """الحصول على حجوزات العميل"""
     try:
-        bookings = supabase.table('bookings')\
-            .select('*')\
-            .eq('customer_id', customer_id)\
-            .order('created_at', desc=True)\
-            .execute()
+        bookings = supabase.table('bookings').select('*').eq('customer_id', customer_id).order('created_at', desc=True).execute()
         
         result = []
         for booking in bookings.data if bookings.data else []:
-            # الحصول على بيانات الشاليه
             chalet = supabase.table('chalets').select('name_ar, name_en, image').eq('id', booking['chalet_id']).execute()
             if chalet.data:
                 booking['chalet_name_ar'] = chalet.data[0]['name_ar']
                 booking['chalet_name_en'] = chalet.data[0]['name_en']
                 booking['chalet_image'] = chalet.data[0]['image']
                 
-                # الحصول على بيانات المالك
                 owner = supabase.table('users').select('name, phone').eq('id', chalet.data[0]['owner_id']).execute()
                 if owner.data:
                     booking['owner_name'] = owner.data[0]['name']
@@ -962,17 +861,14 @@ def get_booking_by_id(booking_id):
         
         result = booking.data[0]
         
-        # الحصول على بيانات الشاليه
         chalet = supabase.table('chalets').select('*').eq('id', result['chalet_id']).execute()
         if chalet.data:
             result['chalet'] = chalet.data[0]
         
-        # الحصول على بيانات العميل
         customer = supabase.table('users').select('*').eq('id', result['customer_id']).execute()
         if customer.data:
             result['customer'] = customer.data[0]
         
-        # الحصول على بيانات المالك
         if chalet.data:
             owner = supabase.table('users').select('*').eq('id', chalet.data[0]['owner_id']).execute()
             if owner.data:
@@ -986,30 +882,21 @@ def get_booking_by_id(booking_id):
 def get_pending_bookings_by_owner(owner_id):
     """الحصول على الحجوزات المعلقة لشاليهات المالك"""
     try:
-        # الحصول على شاليهات المالك
         chalets = supabase.table('chalets').select('id').eq('owner_id', owner_id).execute()
         chalet_ids = [c['id'] for c in chalets.data] if chalets.data else []
         
         if not chalet_ids:
             return []
         
-        # الحصول على الحجوزات المعلقة
-        bookings = supabase.table('bookings')\
-            .select('*')\
-            .in_('chalet_id', chalet_ids)\
-            .eq('status', 'pending')\
-            .order('created_at', desc=True)\
-            .execute()
+        bookings = supabase.table('bookings').select('*').in_('chalet_id', chalet_ids).eq('status', 'pending').order('created_at', desc=True).execute()
         
         result = []
         for booking in bookings.data if bookings.data else []:
-            # الحصول على بيانات الشاليه
             chalet = supabase.table('chalets').select('name_ar, name_en').eq('id', booking['chalet_id']).execute()
             if chalet.data:
                 booking['chalet_name_ar'] = chalet.data[0]['name_ar']
                 booking['chalet_name_en'] = chalet.data[0]['name_en']
             
-            # الحصول على بيانات العميل
             customer = supabase.table('users').select('name, phone, national_id').eq('id', booking['customer_id']).execute()
             if customer.data:
                 booking['customer_name'] = customer.data[0]['name']
@@ -1029,13 +916,11 @@ def get_bookings_by_owner_all(owner_id):
 def update_booking_status_by_owner(booking_id, status, owner_id):
     """تحديث حالة الحجز من قبل المالك مع التحقق من الملكية"""
     try:
-        # التحقق من أن الحجز يخص المالك
         booking = supabase.table('bookings').select('*, chalets(owner_id)').eq('id', booking_id).execute()
         
         if not booking.data or booking.data[0]['chalets']['owner_id'] != owner_id:
             return False
         
-        # إذا كان الحجز مؤكداً وتم إلغاؤه، حذف التواريخ المحجوزة
         if booking.data[0]['status'] == 'confirmed' and status == 'cancelled':
             supabase.table('booked_dates').delete().eq('booking_id', booking_id).execute()
         
@@ -1082,27 +967,5 @@ def get_statistics():
             'pending_users': 0,
             'revenue': 0
         }
-
-# ============================================================
-# دوال إضافية
-# ============================================================
-
-def get_owner_by_user_id(user_id):
-    """الحصول على بيانات المالك بواسطة معرف المستخدم"""
-    try:
-        owner = supabase.table('owner_details').select('*').eq('user_id', user_id).execute()
-        return owner.data[0] if owner.data else None
-    except Exception as e:
-        print(f"خطأ في get_owner_by_user_id: {e}")
-        return None
-
-def get_customer_by_user_id(user_id):
-    """الحصول على بيانات العميل بواسطة معرف المستخدم"""
-    try:
-        customer = supabase.table('customer_details').select('*').eq('user_id', user_id).execute()
-        return customer.data[0] if customer.data else None
-    except Exception as e:
-        print(f"خطأ في get_customer_by_user_id: {e}")
-        return None
 
 print("✅ تم تحميل قاعدة البيانات Supabase بنجاح!")
